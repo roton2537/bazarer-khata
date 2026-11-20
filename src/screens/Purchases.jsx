@@ -3,12 +3,20 @@ import { useStore } from '../store.jsx';
 import { Header, Avatar, Empty } from './parts.jsx';
 import { fmtMoney, parseMoney, minorToInput, todayDhaka, monthOf, dayLabel, newToken, fmtNum } from '../lib/format.js';
 import { Btn, Field, useAction, useConfirm, useToast } from '../ui.jsx';
-import { rpc } from '../lib/supabase.js';
+import { rpc, supabase, q } from '../lib/supabase.js';
+import { rpcQueued } from '../lib/offline.js';
 import { go } from '../App.jsx';
 
 export function PurchaseList() {
   const s = useStore(); const g = s.group;
   const [open, setOpen] = useState(null);
+  const [search, setSearch] = useState(''); const [who, setWho] = useState('');
+  const [hist, setHist] = useState({});
+  const loadHistory = async (id) => {
+    if (hist[id]) return;
+    try { const rows = await q(supabase.from('purchase_history').select('*').eq('purchase_id', id).order('changed_at')); setHist((h) => ({ ...h, [id]: rows })); }
+    catch { setHist((h) => ({ ...h, [id]: [] })); }
+  };
   const [ask, confirmNode] = useConfirm();
   const [busy, run] = useAction();
   const cm = monthOf(todayDhaka());
@@ -18,18 +26,29 @@ export function PurchaseList() {
     const ok = await ask({ title: 'বাজারটি মুছবেন?', body: `“${p.description}” (${fmtMoney(p.amount, g)}) মুছে ফেললে সবার হিসাব থেকে এটি বাদ যাবে। খবরের তালিকায় মোছার কথা দেখাবে।`, confirmText: 'হ্যাঁ, মুছুন', danger: true });
     if (ok) run(async () => { await rpc('delete_purchase', { p_id: p.id }); await s.reloadGroup(); }, 'মুছে ফেলা হয়েছে।');
   };
+  const list = s.data.purchases.filter((p) => (!who || p.buyer_id === who) && (!search.trim() || p.description.toLowerCase().includes(search.trim().toLowerCase())
+    || p.purchase_items.some((i) => i.name.toLowerCase().includes(search.trim().toLowerCase()))));
+  const filtered = Boolean(search.trim() || who);
+  const ACT = { created: 'লেখা হয়েছে', edited: 'সংশোধন হয়েছে (আগে ছিল)', deleted: 'মুছে ফেলা হয়েছে (আগে ছিল)' };
   let lastDate = '';
   return (
     <>
       <Header title="বাজারের তালিকা" />
+      {s.data.purchases.length > 0 && <div className="filters noprint">
+        <input type="search" aria-label="বাজার খুঁজুন" placeholder="কী কিনেছেন খুঁজুন…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <select aria-label="ক্রেতা অনুযায়ী" value={who} onChange={(e) => setWho(e.target.value)}>
+          <option value="">সব ক্রেতা</option>{s.data.members.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
+        </select>
+      </div>}
+      {filtered && s.data.purchases.length > 0 && <p className="small muted" style={{ marginTop: 8 }}>{fmtNum(list.length)}টি বাজার, মোট {fmtMoney(list.reduce((a, p) => a + p.amount, 0), g)}</p>}
       <div className="card" style={{ marginTop: 6 }}>
-        {s.data.purchases.length === 0 ? <Empty title="এ মাসে কোনো বাজার নেই" /> : s.data.purchases.map((p) => {
+        {s.data.purchases.length === 0 ? <Empty title="এ মাসে কোনো বাজার নেই" /> : list.length === 0 ? <Empty title="কিছু পাওয়া যায়নি" /> : list.map((p) => {
           const head = p.bazar_date !== lastDate ? <div className="date-head">{dayLabel(p.bazar_date)}</div> : null;
           lastDate = p.bazar_date;
           return (
             <div key={p.id}>
               {head}
-              <div className="item" onClick={() => setOpen(open === p.id ? null : p.id)} style={{ cursor: 'pointer' }}>
+              <div className="item" onClick={() => { setOpen(open === p.id ? null : p.id); loadHistory(p.id); }} style={{ cursor: 'pointer' }}>
                 <div className="row">
                   <Avatar name={nameOf(p.buyer_id)} id={p.buyer_id} />
                   <div className="grow"><div className="t break">{p.description}</div><div className="small muted">ক্রেতা: {nameOf(p.buyer_id)}</div></div>
@@ -42,6 +61,9 @@ export function PurchaseList() {
                     ) : null}
                     <div className="small muted">যাঁদের ভাগে:</div>
                     <div className="shares">{p.purchase_shares.map((x) => <React.Fragment key={x.member_id}><span>{nameOf(x.member_id)}</span><span>{fmtMoney(x.share, g)}</span></React.Fragment>)}</div>
+                    {(hist[p.id] || []).length > 1 ? <details className="hist"><summary className="small">পরিবর্তনের ইতিহাস ({fmtNum(hist[p.id].length)})</summary>
+                      {hist[p.id].map((h) => <div className="small" key={h.id}>{new Date(h.changed_at).toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka', dateStyle: 'medium', timeStyle: 'short' })} · {nameOf(h.changed_by) || 'কেউ'} {ACT[h.action]}{h.action !== 'created' ? `: ${h.snapshot.description}, ${fmtMoney(h.snapshot.amount, g)}` : ''}</div>)}
+                    </details> : null}
                     {canEdit(p) ? <div className="btn-row">
                       <button className="btn small secondary" onClick={() => go(`#/edit/${p.id}`)}>সংশোধন</button>
                       <Btn busy={busy} className="small danger secondary" onClick={() => del(p)}>মুছুন</Btn></div> : null}
@@ -97,9 +119,13 @@ export function PurchaseForm({ editId }) {
     run(async () => {
       const payload = mode === 'items' ? itemsMinor : [];
       if (editing) await rpc('update_purchase', { p_id: editing.id, p_date: date, p_buyer: buyer, p_desc: desc, p_amount: amount, p_items: payload });
-      else await rpc('add_purchase', { p_group: s.gid, p_token: token.current, p_date: date, p_buyer: buyer, p_desc: desc, p_amount: amount, p_items: payload });
+      else {
+        const r = await rpcQueued('add_purchase', { p_group: s.gid, p_token: token.current, p_date: date, p_buyer: buyer, p_desc: desc, p_amount: amount, p_items: payload });
+        if (r?.queued) { toast('ইন্টারনেট নেই। বাজারটি ফোনে রাখা আছে, নেট এলে নিজে থেকে জমা হবে।'); go('#/'); return; }
+      }
       await s.reloadGroup(); go('#/');
-    }, editing ? 'সংশোধন সংরক্ষিত হয়েছে।' : 'বাজার যোগ হয়েছে।');
+      toast(editing ? 'সংশোধন সংরক্ষিত হয়েছে।' : 'বাজার যোগ হয়েছে।');
+    });
   };
   const remove = async () => {
     const ok = await ask({ title: 'বাজারটি মুছবেন?', body: 'মুছে ফেললে সবার হিসাব থেকে এটি বাদ যাবে।', confirmText: 'হ্যাঁ, মুছুন', danger: true });

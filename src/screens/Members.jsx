@@ -7,7 +7,7 @@ import { enablePush, disablePush, pushSupported } from '../lib/push.js';
 import { go } from '../App.jsx';
 import { Avatar } from './parts.jsx';
 
-export default function Members() {
+export default function Members({ view = 'members' }) {
   const s = useStore(); const g = s.group; const toast = useToast();
   const [ask, confirmNode] = useConfirm();
   const [busy, run] = useAction();
@@ -36,6 +36,12 @@ export default function Members() {
       confirmText: 'হ্যাঁ, গ্রুপ ছাড়ব', danger: true });
     if (ok) run(async () => { await rpc('leave_group', { p_group: s.gid }); await s.refresh(); }, 'আপনি গ্রুপ ছেড়েছেন।');
   };
+  const removeMember = async (m) => {
+    const ok = await ask({ title: `${m.display_name}-কে সরাবেন?`,
+      body: 'আজকের পরের বাজার থেকে তাঁর ভাগ পড়বে না। আগের হিসাব অপরিবর্তিত থাকবে।\nতিনি শুধু তাঁর সদস্য-থাকা মাসগুলোর হিসাব দেখতে ও বাকি টাকা মেটাতে পারবেন, নতুন মাসের কিছুই দেখতে পাবেন না।',
+      confirmText: 'সরিয়ে দিন', danger: true });
+    if (ok) run(async () => { await rpc('remove_member', { p_group: s.gid, p_member: m.id }); await s.reloadGroup(); }, `${m.display_name}-কে সরানো হয়েছে।`);
+  };
   const delGroup = async () => {
     const ok = await ask({ title: 'পুরো গ্রুপ মুছে ফেলবেন?',
       body: `“${g.name}” গ্রুপের সব বাজার, ভাগ, পরিশোধ, মাসিক রিপোর্ট ও খবর সবার জন্য চিরতরে মুছে যাবে। এটি আর ফেরানো যাবে না।\nআগে দরকারি রিপোর্ট প্রিন্ট বা PDF করে রাখতে পারেন।`,
@@ -45,7 +51,8 @@ export default function Members() {
 
   return (
     <>
-      <div className="topbar"><div className="eyebrow">সদস্য ও ব্যবস্থাপনা</div><h1 className="break">{g.name}</h1></div>
+      <div className="topbar"><div className="eyebrow">{view === 'settings' ? 'আমার সেটিংস' : 'সদস্য ও আমন্ত্রণ'}</div><h1 className="break">{g.name}</h1></div>
+      {view === 'members' && <>
 
       <div className="card">
         <h2>সদস্য ({toBnDigits(s.data.members.filter((m) => !m.left_on).length)} জন)</h2>
@@ -54,12 +61,16 @@ export default function Members() {
             <Avatar name={m.display_name} id={m.id} />
             <div className="grow break"><span className="t">{m.display_name}</span>{m.id === s.me?.id ? ' (আমি)' : ''}
               <div className="small muted">যোগ দিয়েছেন {dateLabel(m.joined_on)}</div></div>
-            <div>{m.left_on ? <Tag kind="gray">ছেড়েছেন</Tag> : pausedNow(m) ? <Tag kind="amber">বিরতিতে</Tag> : <Tag>সক্রিয়</Tag>} {m.role === 'admin' && !m.left_on ? <Tag kind="gray">অ্যাডমিন</Tag> : null}</div>
+            <div className="member-tags">{m.left_on ? <Tag kind="gray">ছেড়েছেন</Tag> : pausedNow(m) ? <Tag kind="amber">বিরতিতে</Tag> : <Tag>সক্রিয়</Tag>} {m.role === 'admin' && !m.left_on ? <Tag kind="gray">অ্যাডমিন</Tag> : null}
+              {s.isAdmin && !m.left_on && m.role !== 'admin' && m.id !== s.me?.id ? <button className="btn small ghost danger-text" onClick={() => removeMember(m)}>সরান</button> : null}</div>
           </div>
         ))}
       </div>
 
       {s.isAdmin && <AdminInvite key={s.gid} group={g} members={s.data.members} />}
+      </>}
+
+      {view === 'settings' && <>
 
       {s.isActive ? (
         <div className="card">
@@ -79,20 +90,31 @@ export default function Members() {
         <h2>নোটিফিকেশন</h2>
         <p className="small muted">কেউ বাজার যোগ করলে বা পরিশোধ লিখলে ফোনে জানানো হবে। বন্ধ থাকলেও অ্যাপের ভেতরে “খবর” ঠিকই দেখা যাবে।</p>
         <div className="btn-row"><Btn busy={busy} className={pushOn ? 'secondary' : ''} onClick={togglePush} disabled={!pushSupported() && !pushOn}>{pushOn ? 'পুশ নোটিফিকেশন বন্ধ করুন' : 'পুশ নোটিফিকেশন চালু করুন'}</Btn></div>
+        {pushOn ? <div className="btn-row"><Btn busy={busy} className="secondary small" onClick={() => run(async () => { await rpc('send_test_push', { p_group: s.gid }); }, 'পাঠানো হয়েছে। কয়েক সেকেন্ডে ফোনে আসার কথা। না এলে অ্যাডমিন সার্ভারের পুশ-সেটআপ দেখে নেবেন।')}>পরীক্ষামূলক নোটিফিকেশন পাঠান</Btn></div> : null}
         {!pushSupported() ? <p className="small muted">এই ব্রাউজারে পুশ নোটিফিকেশন চলবে না।</p> : null}
       </div>
 
       <div className="card">
-        <h2>খাতার সেটিংস</h2>
+        <h2>খাতা ও অ্যাকাউন্ট</h2>
         <p className="small muted">{s.session.user.email || s.me?.display_name}</p>
         <div className="stack" style={{ marginTop: 8 }}>
           {s.isAdmin && others.length > 0 ? <button className="btn secondary" onClick={() => setTransferSheet('transfer')}>অ্যাডমিনের দায়িত্ব অন্যকে দিন</button> : null}
-          {s.isActive ? <Btn busy={busy} className="danger secondary" onClick={leave}>এই গ্রুপ ছেড়ে যান</Btn> : null}
-          {s.isAdmin ? <Btn busy={busy} className="danger secondary" onClick={delGroup}>পুরো গ্রুপ মুছে ফেলুন</Btn> : null}
           <button className="btn secondary" onClick={() => go('#/new-group')}>+ আরেকটি গ্রুপ খুলুন বা যোগ দিন</button>
           <button className="btn secondary" onClick={() => go('#/account')}>আমার অ্যাকাউন্ট</button>
         </div>
       </div>
+
+      {s.isActive ? (
+        <div className="card danger-zone">
+          <h2>বিপজ্জনক কাজ</h2>
+          <p className="small muted">এগুলো করার আগে নিশ্চিত হয়ে নিন। প্রতিটির আগে আরেকবার জিজ্ঞেস করা হবে।</p>
+          <div className="stack" style={{ marginTop: 8 }}>
+            <Btn busy={busy} className="danger secondary" onClick={leave}>এই গ্রুপ ছেড়ে যান</Btn>
+            {s.isAdmin ? <Btn busy={busy} className="danger secondary" onClick={delGroup}>পুরো গ্রুপ মুছে ফেলুন</Btn> : null}
+          </div>
+        </div>
+      ) : null}
+      </>}
 
       {pauseSheet ? <PauseSheet onClose={() => setPauseSheet(false)} /> : null}
       {transferSheet ? <TransferSheet mode={transferSheet} others={others} onClose={() => setTransferSheet(null)} /> : null}
@@ -151,6 +173,13 @@ function TransferSheet({ mode, others, onClose }) {
   );
 }
 
+function expiryLabel(iso) {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return 'শেষ — নতুন লিংক বানান';
+  const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5);
+  return d > 0 ? `আর ${toBnDigits(d)} দিন` : `আর ${toBnDigits(h)} ঘণ্টা`;
+}
+
 function AdminInvite({group, members}) {
   const [label,setLabel] = useState('');
   const [links,setLinks] = useState([]);
@@ -173,7 +202,7 @@ function AdminInvite({group, members}) {
   }
   return <section className="card stack"><h2>সদস্য যোগ করুন</h2>
     <form onSubmit={e => { e.preventDefault(); issue(); }}>
-      <Field label="সদস্যের নাম"><input required maxLength={100} value={label} onChange={e => setLabel(e.target.value)} /></Field>
+      <Field label="সদস্যের নাম"><input type="text" required maxLength={100} placeholder="যেমন: নাসির" value={label} onChange={e => setLabel(e.target.value)} /></Field>
       <Btn busy={busy}>আমন্ত্রণ লিংক তৈরি করুন</Btn>
     </form>
     {members.filter(m => !m.left_on && m.role === 'member').map(m =>
@@ -182,10 +211,11 @@ function AdminInvite({group, members}) {
     {links.map(row => {
       const link = window.location.origin + '/#/access/' + row.token;
       if (row.purpose === 'backup') return <div className="stack" key={row.token}><h3>অ্যাডমিনের রিকভারি কোড</h3>
-        <p>ফোন বদলালে খাতা ফেরত পেতে কোডটি ব্যক্তিগতভাবে সংরক্ষণ করুন।</p>
+        <p>ফোন বদলালে খাতা ফেরত পেতে কোডটি ব্যক্তিগতভাবে সংরক্ষণ করুন। এই কোডের মেয়াদ নেই, তাই অন্য কারও সঙ্গে শেয়ার করবেন না।</p>
         <Btn className="secondary" onClick={() => setShowCode(!showCode)}>{showCode ? 'কোড লুকান' : 'রিকভারি কোড দেখুন'}</Btn>
         {showCode && <><code className="break">{row.token}</code><Btn onClick={() => run(() => navigator.clipboard.writeText(row.token),'কোড কপি হয়েছে।')}>কোড কপি</Btn></>}</div>;
       return <div className="stack" key={row.token}><strong>{row.label} · {row.purpose === 'join' ? 'আমন্ত্রণ' : 'নতুন ফোন'}</strong>
+        {row.expires_at && <div className="small muted">মেয়াদ: {expiryLabel(row.expires_at)}</div>}
         <span className="small break">{link}</span><div className="btn-row">
           <Btn className="small" onClick={() => run(() => navigator.clipboard.writeText(link),'লিংক কপি হয়েছে।')}>লিংক কপি</Btn>
           <a className="btn small secondary" href={'https://wa.me/?text='+encodeURIComponent(group.name+' · '+link)} target="_blank" rel="noreferrer">WhatsApp</a>

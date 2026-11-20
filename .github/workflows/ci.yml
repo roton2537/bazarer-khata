@@ -1,0 +1,17 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npm test            # SQL (PGlite), হিসাব ও চুক্তি-পরীক্ষা
+      - run: npm run build       # প্রোডাকশন বিল্ড ভাঙেনি তো?
+      - run: npm run build:demo  # ডেমো (মক) বিল্ড
+      - name: স্মোক (ব্রাউজারে পর্দা খোলে কি না)
+        run: npm run e2e

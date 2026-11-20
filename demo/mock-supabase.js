@@ -1,10 +1,13 @@
 // শুধু স্ক্রিনশট/ডেমোর জন্য: সত্যিকারের Supabase ছাড়া স্ক্রিন চালানোর নমুনা-তথ্য (প্রোডাকশন বিল্ডে ব্যবহৃত হয় না)
 export const configured = true;
 export const errText = (e) => e?.message || String(e);
-const UID = 'u-rahim';
+const AS = new URLSearchParams(window.location.search).get('as') || 'admin';   // admin | member | new | guest
+const ME = AS === 'member' ? 'karim' : 'rahim';
+const GATE = AS === 'admin-new';
+const UID = 'u-' + ME;
 const G = { id: 'g1', name: 'বাসার বাজার', currency_code: 'BDT', currency_symbol: '৳', currency_name: 'টাকা', currency_gen: 'টাকার', currency_decimals: 2, invite_code: 'K7M2QX9A' };
 const mk = (id, n, role = 'member', user = true) => ({ id, group_id: 'g1', user_id: user ? 'u-' + id : null, display_name: n, role, joined_on: '2026-11-01', left_on: null, seq: id.length + n.length, created_at: '2026-11-01' });
-const members = [mk('rahim', 'রহিম', 'admin'), mk('karim', 'করিম'), mk('abdul', 'আব্দুল'), mk('salam', 'সালাম')];
+const members = [{ ...mk('rahim', 'রহিম', 'admin'), recovery_saved_at: GATE ? null : '2026-11-02' }, mk('karim', 'করিম'), mk('abdul', 'আব্দুল'), mk('salam', 'সালাম')];
 const sh = (pid) => members.map((m) => ({ purchase_id: pid, member_id: m.id, share: 50000 }));
 const P = (id, b, d, amt, date, items = []) => ({ id, group_id: 'g1', bazar_date: date, month: '2026-11-01', buyer_id: b, description: d, amount: amt, created_by: b,
   created_at: date + 'T08:00:00Z', purchase_items: items, purchase_shares: sh(id) });
@@ -20,7 +23,8 @@ const report = { month: '2026-11-01', status: 'open', total: 200000, members: [r
 const ev = ['রহিম করিমকে ১০০ টাকা পরিশোধ করেছেন (নিশ্চিতের অপেক্ষায়)।', 'সালাম ৫০০ টাকার সবজি ও ফল কিনেছেন।', 'আব্দুল ৫০০ টাকার মাছ কিনেছেন।', 'করিম ৭০০ টাকার চাল, ডাল ও তেল কিনেছেন।', 'রহিম ৩০০ টাকার ডিম ও দুধ কিনেছেন।', 'সালাম গ্রুপে যোগ দিয়েছেন।']
   .map((m, i) => ({ id: 'e' + i, group_id: 'g1', message: m, created_at: new Date(Date.now() - i * 3600e3 * 5).toISOString() }));
 const T = {
-  members: [{ ...members[0], user_id: UID, groups: G }], profiles: { id: UID, name: 'রহিম', push_enabled: false },
+  members: AS === 'new' || AS === 'guest' ? [] : [{ ...members.find((m) => m.id === ME), user_id: UID, groups: G }],
+  profiles: { id: UID, name: AS === 'member' ? 'করিম' : AS === 'new' ? 'নাসির' : 'রহিম', push_enabled: false },
 };
 const tables = { members, pauses: [], purchases, events: ev };
 function chain(table) {
@@ -34,16 +38,21 @@ function chain(table) {
 }
 export const supabase = {
   from: chain,
-  auth: { getSession: async () => ({ data: { session: { user: { id: UID, email: 'rahim@example.com' } } } }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }), signOut: async () => {} },
+  auth: { getSession: async () => ({ data: { session: AS === 'guest' ? null : { user: { id: UID, email: ME + '@example.com' } } } }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }), signOut: async () => {} },
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {}, rpc: async () => ({ data: null, error: null }),
 };
-const accessLinks = [];
+const day = 864e5;
+const accessLinks = [
+  { token: '11111111-2222-4333-8444-555555555555', label: 'রহিম', purpose: 'backup', expires_at: null },
+  { token: 'aaaaaaaa-2222-4333-8444-555555555555', label: 'নাসির', purpose: 'join', expires_at: new Date(Date.now() + 5 * day).toISOString() },
+  { token: 'bbbbbbbb-2222-4333-8444-555555555555', label: 'করিম', purpose: 'restore', expires_at: new Date(Date.now() + 5 * 36e5).toISOString() },
+];
 export async function rpc(name, args = {}) {
-  if (name === 'pending_access_links') return [...accessLinks];
+  if (name === 'pending_access_links') return AS === 'member' ? [] : [...accessLinks];
   if (name === 'issue_access_link') {
     const token = crypto.randomUUID();
     const target = members.find(m => m.id === args.p_target);
-    accessLinks.push({token, label: target?.display_name || args.p_label, purpose: target ? 'restore' : 'join'});
+    accessLinks.push({token, label: target?.display_name || args.p_label, purpose: target ? 'restore' : 'join', expires_at: new Date(Date.now() + (target ? 3 : 7) * day).toISOString()});
     return token;
   }
   if (name === 'cancel_access_link') {
@@ -51,6 +60,9 @@ export async function rpc(name, args = {}) {
     if (index >= 0) accessLinks.splice(index, 1);
     return;
   }
+  if (name === 'remove_member') return null;
+  if (name === 'preview_access_link') return { group_name: 'বাসার বাজার', label: 'নাসির', purpose: 'join' };
+  if (name === 'pending_access_links' && AS === 'member') return [];
   if (name === 'month_report') return report;
   if (name === 'group_months') return [{ month: '2026-11-01', finalized: false }];
   if (name === 'list_corrections') return [];

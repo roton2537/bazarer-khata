@@ -40,7 +40,7 @@ export function StoreProvider({ session, children }) {
     const my = ++seq.current;
     setLoading(true); setError('');
     try {
-      const [members, pauses, purchases, report, months, corrections, events] = await Promise.all([
+      const [members, pauses, purchases, report, months, corrections, events, payRows] = await Promise.all([
         q(supabase.from('members').select('*').eq('group_id', g).order('seq')),
         q(supabase.from('pauses').select('*').eq('group_id', g)),
         q(supabase.from('purchases').select('*, purchase_items(*), purchase_shares(*)').eq('group_id', g).eq('month', m)
@@ -49,9 +49,11 @@ export function StoreProvider({ session, children }) {
         rpc('group_months', { p_group: g }),
         rpc('list_corrections', { p_group: g, p_month: m }),
         q(supabase.from('events').select('*').eq('group_id', g).order('created_at', { ascending: false }).limit(80)),
+        q(supabase.from('payments').select('id,kind,note,reminded_at').eq('group_id', g).eq('month', m)),
       ]);
+      const paymentMeta = Object.fromEntries((payRows || []).map((r) => [r.id, r]));
       if (my !== seq.current) return;
-      setData({ members, pauses, purchases, report, months, corrections, events, gid: g, month: m });
+      setData({ members, pauses, purchases, report, months, corrections, events, paymentMeta, gid: g, month: m });
     } catch (e) { if (my === seq.current) { setError(e.message); toast(e.message, true); } }
     finally { if (my === seq.current) setLoading(false); }
   }, [toast]);
@@ -93,6 +95,24 @@ export function StoreProvider({ session, children }) {
   const isActive = !!me && !me.left_on;
   const myRow = data?.report?.members?.find((m) => m.id === me?.id) || null;
 
-  const value = { session, uid, profile, memberships, gid, setGid, group, month, setMonth, data, loading, error, refresh, me, isAdmin, isActive, myRow, reloadGroup: () => loadGroup(gid, month) };
+  // খবর: কোনটি আমি দেখিনি (এই ডিভাইসে শেষ দেখার সময় ধরে)
+  const [seenTick, setSeenTick] = useState(0);
+  const seenKey = `bk_seen_${gid}`;
+  const unread = useMemo(() => {
+    if (!data || !me) return 0;
+    let seen = ''; try { seen = localStorage.getItem(seenKey) || ''; } catch { /* */ }
+    if (!seen) return 0;   // প্রথমবার: সবকিছুকে "না-পড়া" দেখানো হয় না
+    return data.events.filter((e) => e.created_at > seen && e.actor_id !== me.id).length;
+  }, [data, me, seenKey, seenTick]);
+  const markFeedSeen = useCallback(() => {
+    try { localStorage.setItem(seenKey, new Date().toISOString()); } catch { /* */ }
+    setSeenTick((n) => n + 1);
+  }, [seenKey]);
+
+  useEffect(() => { // প্রথমবার খুললে বর্তমান খবরগুলো "দেখা" ধরা হয়
+    try { if (data && me && !localStorage.getItem(seenKey)) markFeedSeen(); } catch { /* */ }
+  }, [data, me, seenKey, markFeedSeen]);
+
+  const value = { unread, markFeedSeen, session, uid, profile, memberships, gid, setGid, group, month, setMonth, data, loading, error, refresh, me, isAdmin, isActive, myRow, reloadGroup: () => loadGroup(gid, month) };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

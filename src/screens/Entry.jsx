@@ -1,3 +1,4 @@
+import { captchaToken } from '../lib/captcha.js';
 import React, { useEffect, useState } from 'react';
 import { supabase, rpc, errText } from '../lib/supabase.js';
 import { Btn, Field, useAction, useConfirm } from '../ui.jsx';
@@ -73,7 +74,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
   const intent = invite ? 'join/' + invite : create ? 'create' : '';
   const switchMode = next => { setInfo(''); setPw(''); setMode(next); };
   const sendReset = async () => {
-    const {error} = await supabase.auth.resetPasswordForEmail(email.trim(), {redirectTo: emailReturn(intent ? 'recover/' + intent : 'recover')});
+    const {error} = await supabase.auth.resetPasswordForEmail(email.trim(), {captchaToken: await captchaToken(), redirectTo: emailReturn(intent ? 'recover/' + intent : 'recover')});
     if (error) throw new Error(errText(error));
     setInfo('এই ইমেইলে অ্যাকাউন্ট থাকলে পাসওয়ার্ড বদলানোর লিংক পাবেন।');
   };
@@ -83,11 +84,11 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
       if (mode === 'forgot') return sendReset();
       if (mode === 'up') {
         if (!name.trim()) throw new Error('আপনার নাম লিখুন।');
-        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password: pw, options: { emailRedirectTo: emailReturn(intent), data: { name: name.trim() } } });
+        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password: pw, options: { captchaToken: await captchaToken(), emailRedirectTo: emailReturn(intent), data: { name: name.trim() } } });
         if (error) throw new Error(errText(error));
         if (!data.session) { setMode('verify'); setPw(''); setInfo('আপনার ইমেইলে একটি নিশ্চিতকরণ লিংক পাঠানো হয়েছে। লিংকে ক্লিক করে তারপর খাতায় ফিরে আসুন।'); }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pw });
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pw, options: { captchaToken: await captchaToken() } });
         if (error) throw new Error(errText(error));
       }
     });
@@ -212,7 +213,24 @@ export function Account() {
   return <main className="app no-nav"><section className="card stack"><h2>আমার অ্যাকাউন্ট</h2>
     <p>{s.profile?.name}</p><p>{s.session.user.email}</p>
     {s.session.user.email && <a className="btn secondary" href="#/recover">পাসওয়ার্ড বদলান</a>}
+    {!s.session.user.email && <AddEmail />}
     <Btn busy={busy} onClick={() => run(async () => {const {error} = await supabase.auth.signOut({scope:'local'}); if(error) throw error; go('#/');})}>সাইন আউট</Btn>
     <Btn busy={busy} className="danger secondary" onClick={delAccount}>আমার অ্যাকাউন্ট মুছে ফেলুন</Btn>
     <a href="#/">ফিরে যান</a></section>{confirmNode}</main>;
+}
+
+// ইমেইল ছাড়া (লিংকে যোগ দেওয়া) সদস্য নিজেই অ্যাকাউন্ট সুরক্ষিত করতে পারেন:
+// ফোন হারালেও ইমেইল ও পাসওয়ার্ডে সাইন ইন করে খাতা ফেরত পাবেন।
+function AddEmail() {
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
+  const [busy, run] = useAction();
+  if (sent) return <p className="banner green">{email.trim()} ঠিকানায় একটি লিংক গেছে। লিংকে ক্লিক করে ইমেইল নিশ্চিত করুন, তারপর এই পাতায় ফিরে “পাসওয়ার্ড দিন” চাপুন।</p>;
+  return <form className="stack" onSubmit={(e) => { e.preventDefault();
+    run(async () => { const { error } = await supabase.auth.updateUser({ email: email.trim() }, { emailRedirectTo: window.location.origin + '/#/account' }); if (error) throw new Error(errText(error)); setSent(true); }); }}>
+    <h3>অ্যাকাউন্ট সুরক্ষিত করুন</h3>
+    <p className="small muted">এখন আপনি ইমেইল ছাড়া ঢুকেছেন। ইমেইল যোগ করলে ফোন হারালেও অ্যাডমিনের সাহায্য ছাড়াই খাতা ফিরে পাবেন।</p>
+    <Field label="আপনার ইমেইল"><input required type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+    <Btn busy={busy} className="secondary">ইমেইল যোগ করুন</Btn>
+  </form>;
 }

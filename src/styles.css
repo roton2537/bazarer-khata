@@ -48,7 +48,7 @@ a { color: var(--green); }
 
 label.field { display: block; margin-top: 14px; font-weight: 500; }
 label.field > span { display: block; margin-bottom: 5px; font-size: 14px; color: var(--muted); }
-input[type=text], input[type=email], input[type=password], input[type=date], input[type=number], select, textarea {
+input[type=text], input[type=search], input[type=email], input[type=password], input[type=date], input[type=number], select, textarea {
   width: 100%; min-height: 52px; padding: 10px 14px; border: 1.5px solid var(--line); border-radius: 14px; background: #fff; outline: none; transition: border-color .15s, box-shadow .15s; }
 input:focus, select:focus, textarea:focus { border-color: var(--green); box-shadow: 0 0 0 4px var(--green-l); }
 input.big { font-size: 28px; font-weight: 700; min-height: 64px; text-align: left; }
@@ -83,7 +83,7 @@ input.big { font-size: 28px; font-weight: 700; min-height: 64px; text-align: lef
 .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: rgba(255, 253, 247, .94); backdrop-filter: blur(10px); border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom); display: flex; justify-content: center; }
 .nav-in { display: flex; width: 100%; max-width: 520px; }
-.nav a { flex: 1; min-height: var(--nav-h); display: flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none; color: var(--muted); font-size: 12.5px; gap: 3px; position: relative; }
+.nav a { flex: 1; min-width: 0; min-height: var(--nav-h); display: flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none; color: var(--muted); font-size: 12px; gap: 3px; position: relative; }
 .nav a svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .nav a.on { color: var(--green); font-weight: 700; }
 .nav a.on::before { content: ''; position: absolute; top: 0; width: 28px; height: 3px; border-radius: 0 0 3px 3px; background: var(--green); }
@@ -140,3 +140,48 @@ input.big { font-size: 28px; font-weight: 700; min-height: 64px; text-align: lef
   .app .hero { padding:24px; }
   .app .hero .big { font-size:42px; }
 }
+
+/* সদস্য তালিকা: ট্যাগ ও "সরান" বাটন মোবাইলে মাপে থাকে */
+.member-tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; align-items: center; max-width: 150px; }
+.btn.ghost.danger-text { color: #a33a2b; }
+
+/* আমন্ত্রণ/রিকভারি পেজ: উপরে ফাঁকা জায়গা ও ফর্মের উপাদানের মধ্যে দূরত্ব */
+.app.no-nav { padding-top: 28px; }
+.stack form > * + * { margin-top: 14px; }
+.stack > a { display: inline-block; padding: 8px 0; }
+
+/* সদস্য / সেটিংস ট্যাব */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 4px 0 14px; background: #ece5cf; border-radius: 16px; }
+.seg a { text-align: center; padding: 10px 8px; border-radius: 12px; font-weight: 600; text-decoration: none; color: var(--muted); }
+.seg a.on { background: #fff; color: var(--green); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.danger-zone { border-color: #e3b8b0; }
+.danger-zone h2 { color: #a33a2b; }
+.rg-code { display: block; margin: 12px 0; padding: 14px; border-radius: 14px; background: #f1ecd9; font-size: 17px; line-height: 1.5; user-select: all; }
+.rg-check { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0; line-height: 1.5; }
+.rg-check input { width: 22px; height: 22px; margin-top: 2px; flex: none; }
+
+/* ঘণ্টা (খবর) ও অফলাইন ব্যানার ও নির্দেশিকা */
+.app { position: relative; }
+.bell { position: fixed; top: calc(12px + env(safe-area-inset-top)); right: max(16px, calc(50% - 244px)); width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; background: var(--card, #fffdf7); border: 1px solid var(--line); color: var(--muted); z-index: 12; box-shadow: var(--shadow); }
+.bell.on { color: var(--green); border-color: var(--green); }
+.bell svg { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.bell .badge { position: absolute; top: -3px; right: -3px; }
+.topbar h1, .topbar .eyebrow { padding-right: 56px; }
+.queue-wrap > * { margin-top: 10px; }
+.tour ol { padding-left: 20px; margin: 0; display: grid; gap: 8px; line-height: 1.55; }
+.seg.three { grid-template-columns: repeat(3, 1fr); }
+.seg button { border: 0; background: transparent; padding: 10px 8px; border-radius: 12px; font-weight: 600; color: var(--muted); min-height: 44px; }
+.seg button.on { background: #fff; color: var(--green); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.fold > summary { display: flex; align-items: baseline; justify-content: space-between; cursor: pointer; list-style: none; min-height: 44px; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary h2 { margin: 0; }
+.filters { display: grid; grid-template-columns: 1fr 140px; gap: 8px; margin-top: 10px; }
+.filters input, .filters select { width: 100%; }
+.hist { margin-top: 8px; } .hist > div { margin-top: 4px; }
+
+/* অ্যাক্সেসিবিলিটি: কিবোর্ড ফোকাস দৃশ্যমান, ছোট লেখা একটু বড়, প্লেসহোল্ডার পড়ার মতো */
+:focus-visible { outline: 3px solid var(--green-m); outline-offset: 2px; }
+.small { font-size: 15px; }
+.nav a { font-size: 13px; }
+::placeholder { color: #6a756e; opacity: 1; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

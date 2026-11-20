@@ -1,3 +1,4 @@
+import { captchaToken as captchaToken_ } from '../lib/captcha.js';
 import React, { useEffect, useState } from 'react';
 import { rpc, supabase, errText } from '../lib/supabase.js';
 import { Btn, Field, useAction } from '../ui.jsx';
@@ -6,7 +7,8 @@ export async function deviceSession() {
   const current = await supabase.auth.getSession();
   if (current.error) throw current.error;
   if (current.data.session) return;
-  const { error } = await supabase.auth.signInAnonymously();
+  const captchaToken = await captchaToken_();
+  const { error } = await supabase.auth.signInAnonymously(captchaToken ? { options: { captchaToken } } : undefined);
   if (error) throw new Error(errText(error));
 }
 
@@ -38,7 +40,7 @@ export function AcceptLink({ token }) {
         openLedger(await rpc('accept_access_link', {p_token: token, p_name: name.trim()}), record.purpose === 'backup' ? '/members' : '/');
       }); }}>
         {record.purpose === 'join' ? <><p>আপনাকে এই খাতায় আমন্ত্রণ জানানো হয়েছে।</p>
-          <Field label="আপনার নাম"><input required maxLength={100} value={name} onChange={e => setName(e.target.value)} /></Field></> :
+          <Field label="আপনার নাম"><input type="text" required maxLength={100} autoComplete="name" value={name} onChange={e => setName(e.target.value)} /></Field></> :
           <p>{record.label} হিসেবে আগের হিসাব এই ডিভাইসে খুলবে। পুরোনো ডিভাইসের প্রবেশাধিকার সরবে।</p>}
         <Btn busy={busy}>{record.purpose === 'join' ? 'যোগ দিন' : 'আমার খাতা ফিরিয়ে আনুন'}</Btn>
       </form>}
@@ -55,7 +57,7 @@ export function OpenLedger({signedIn}) {
     <form onSubmit={e => {e.preventDefault(); const value = code.trim();
       if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value)) return setError('সম্পূর্ণ রিকভারি কোড দিন।');
       location.hash = '/access/' + value;
-    }}><Field label="রিকভারি কোড"><input value={code} required onChange={e => setCode(e.target.value)} /></Field>
+    }}><Field label="রিকভারি কোড"><input type="text" value={code} required autoComplete="off" onChange={e => setCode(e.target.value)} /></Field>
     {error && <p role="alert">{error}</p>}<Btn>খাতা খুলুন</Btn></form>
     {!signedIn && <a href="#/signin">আগের ইমেইল অ্যাকাউন্টে প্রবেশ করুন</a>}
   </section></main>;

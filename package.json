@@ -7,9 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test tests/schema.test.js tests/format.test.js"
+    "test": "node --test tests/schema.test.js tests/hardening.test.js tests/contract.test.js tests/format.test.js",
+    "build:demo": "vite build -c vite.demo.config.js",
+    "e2e": "node tests/e2e/smoke.mjs"
   },
   "dependencies": {
+    "@sentry/browser": "^11.16.0",
     "@supabase/supabase-js": "^2.45.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

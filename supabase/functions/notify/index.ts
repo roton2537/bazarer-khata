@@ -13,7 +13,9 @@ Deno.serve(async (req) => {
 
   const { data: grp } = await sb.from('groups').select('name').eq('id', record.group_id).single();
   const { data: members } = await sb.from('members').select('id, user_id').eq('group_id', record.group_id).is('left_on', null).not('user_id', 'is', null);
-  const targets = (members ?? []).filter((m) => m.id !== record.actor_id).map((m) => m.user_id);
+  // push_test: শুধু প্রেরককেই পাঠানো হয় (সেটিংস → "পরীক্ষামূলক নোটিফিকেশন")
+  const isTest = record.kind === 'push_test';
+  const targets = (members ?? []).filter((m) => (isTest ? m.id === record.actor_id : m.id !== record.actor_id)).map((m) => m.user_id);
   if (!targets.length) return new Response('no targets');
 
   const { data: profs } = await sb.from('profiles').select('id').in('id', targets).eq('push_enabled', true);

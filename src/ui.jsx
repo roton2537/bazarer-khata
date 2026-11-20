@@ -11,9 +11,11 @@ export function Btn({ busy, children, className = '', ...p }) {
 }
 
 export function Field({ label, children, hint }) {
+  // type না দেওয়া input স্টাইল পায় না; তাই ডিফল্ট "text"
+  const kids = React.Children.map(children, (c) => (React.isValidElement(c) && c.type === 'input' && !c.props.type ? React.cloneElement(c, { type: 'text' }) : c));
   return (
     <label className="field">
-      <span>{label}</span>{children}
+      <span>{label}</span>{kids}
       {hint ? <span className="small muted" style={{ marginTop: 4 }}>{hint}</span> : null}
     </label>
   );

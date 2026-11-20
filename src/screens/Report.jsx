@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store.jsx';
 import { Header, Balance, Avatar, Empty } from './parts.jsx';
 import { fmtMoney, parseMoney, minorToInput, monthLabel, dateLabel, dayLabel, todayDhaka, monthOf, addMonths, correctionWindowOpen, newToken } from '../lib/format.js';
 import { Btn, Field, Sheet, Tag, useAction, useConfirm, useToast } from '../ui.jsx';
 import { rpc } from '../lib/supabase.js';
+import { rpcQueued } from '../lib/offline.js';
 
 const PAY_STATUS = { pending: ['amber', 'নিশ্চিতের অপেক্ষায়'], confirmed: ['', 'নিশ্চিত'], rejected: ['red', 'প্রাপক পাননি বলেছেন'], cancelled: ['gray', 'বাতিল'], expired: ['gray', 'অনিশ্চিত থেকে গেছে'] };
 const KIND = { add: 'নতুন বাজার যোগ', edit: 'বাজার সংশোধন', delete: 'বাজার মোছা' };
@@ -21,6 +22,16 @@ export default function Report() {
   const [busy, run] = useAction();
   const meId = s.me?.id;
   const reload = () => s.reloadGroup();
+  const [adjSheet, setAdjSheet] = useState(false);
+  useEffect(() => { const open = () => document.querySelectorAll('details.fold').forEach((d) => { d.open = true; }); window.addEventListener('beforeprint', open); return () => window.removeEventListener('beforeprint', open); }, []);
+  const shareSummary = async () => {
+    const lines = [`${g.name} — ${monthLabel(s.month)}${finalized ? '' : ' (খসড়া)'}`, `মোট বাজার: ${fmtMoney(rep.total, g)}`,
+      ...(rep.settlements.length ? ['কে কাকে কত দেবেন:', ...rep.settlements.map((x) => `• ${x.from_name} → ${x.to_name}: ${fmtMoney(x.amount, g)}`)] : ['সবার হিসাব মিটেছে ✓'])];
+    const text = lines.join('\n');
+    try { if (navigator.share) await navigator.share({ title: g.name, text }); else { await navigator.clipboard.writeText(text); toast('সারাংশ কপি হয়েছে।'); } }
+    catch (e) { if (e?.name !== 'AbortError') toast('শেয়ার করা যায়নি।', true); }
+  };
+  const meta = (id) => s.data.paymentMeta?.[id] || {};
 
   const payAct = (fn, id, msg) => run(async () => { await rpc(fn, { p_id: id }); await reload(); }, msg);
   const pendingCorr = s.data.corrections.filter((c) => c.status === 'pending');
@@ -58,6 +69,10 @@ export default function Report() {
         <div className="row between" style={{ marginTop: 6 }}><span className="muted">মোট বাজার</span><b style={{ fontSize: 22 }}>{fmtMoney(rep.total, g)}</b></div>
         {finalized ? <p className="small muted">চূড়ান্ত করেছেন {rep.finalized_by_name || 'অ্যাডমিন'} · {dateLabel(new Date(rep.finalized_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }))}</p>
           : <p className="small muted">এটি খসড়া রিপোর্ট। অ্যাডমিন চূড়ান্ত করার আগে বদলাতে পারে।</p>}
+        <div className="btn-row noprint">
+          <button className="btn small secondary" onClick={shareSummary}>সারাংশ শেয়ার করুন</button>
+          <button className="btn small secondary" onClick={() => window.print()}>PDF / প্রিন্ট</button>
+        </div>
       </div>
 
       <div className="section">
@@ -65,7 +80,7 @@ export default function Report() {
         <div className="card" style={{ marginTop: 8 }}>
           {rep.settlements.length === 0 ? <Empty icon="report" title={rep.members.length && rep.total ? 'সবার হিসাব মিটেছে ✓' : 'এখনও কোনো দেনা-পাওনা নেই'} /> : rep.settlements.map((x, i) => (
             <div className="item" key={i}>
-              <div className="pay-line"><Avatar sm name={x.from_name} id={x.from} /><span className="arrow">→</span><Avatar sm name={x.to_name} id={x.to} /><div className="grow break"><b>{x.from_name}</b> <b>{x.to_name}</b>কে <b className="neg">{fmtMoney(x.amount, g)}</b> দেবেন।</div></div>
+              <div className="pay-line"><Avatar sm name={x.from_name} id={x.from} /><span className="arrow">→</span><Avatar sm name={x.to_name} id={x.to} /><div className="grow break">{x.from === s.me?.id ? <b>আপনি</b> : <b>{x.from_name}</b>} {x.to === s.me?.id ? <b>আপনাকে</b> : <><b>{x.to_name}</b>কে</>} <b className="neg">{fmtMoney(x.amount, g)}</b> {x.from === s.me?.id ? 'দেবেন' : 'দেবেন'}।</div></div>
               {canPay && x.from === meId ? <div className="btn-row"><button className="btn small" onClick={() => setPaySheet({ to: x.to, amount: x.amount })}>পরিশোধ লিখুন</button></div> : null}
             </div>
           ))}
@@ -73,8 +88,8 @@ export default function Report() {
         {canPay ? <div style={{ marginTop: 10 }}><button className="btn secondary" onClick={() => setPaySheet({})}>+ অন্য পরিশোধ লিখুন</button></div> : null}
       </div>
 
-      <div className="section">
-        <h2>কে কত বাজার করেছেন, কার ভাগ কত</h2>
+      <details className="section fold">
+        <summary><h2>কে কত বাজার করেছেন, কার ভাগ কত</h2><span className="small muted">খুলুন / বন্ধ করুন</span></summary>
         {rep.members.length === 0 ? <div className="card"><Empty icon="report" title="এখনও কোনো হিসাব নেই" /></div> : rep.members.map((m) => (
           <div className="card" key={m.id} style={{ marginTop: 8 }}>
             <div className="row"><Avatar name={m.name} id={m.id} /><b className="break grow">{m.name}{m.id === meId ? ' (আমি)' : ''}</b><Balance value={m.balance} g={g} /></div>
@@ -86,7 +101,7 @@ export default function Report() {
             </div>
           </div>
         ))}
-      </div>
+      </details>
 
       {rep.payments.length > 0 ? (
         <div className="section">
@@ -97,14 +112,15 @@ export default function Report() {
               return (
                 <div className="item" key={p.id}>
                   <div className="row between" style={{ alignItems: 'flex-start' }}>
-                    <div className="grow break"><b>{p.from_name}</b> → <b>{p.to_name}</b><div className="small muted">{dayLabel(new Date(p.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }))}</div></div>
+                    <div className="grow break"><b>{p.from_name}</b> → <b>{p.to_name}</b>{meta(p.id).kind === 'adjustment' ? <> <Tag kind="amber">সমন্বয়</Tag></> : null}{meta(p.id).kind === 'adjustment' ? <div className="small">{meta(p.id).note}</div> : null}<div className="small muted">{dayLabel(new Date(p.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }))}</div></div>
                     <div style={{ textAlign: 'right' }}><div className="amt">{fmtMoney(p.amount, g)}</div><Tag kind={kind}>{label}</Tag></div>
                   </div>
                   {p.status === 'pending' && p.to === meId && !finalized ? (
                     <div className="btn-row"><Btn busy={busy} className="small" onClick={() => payAct('confirm_payment', p.id, 'নিশ্চিত করা হয়েছে।')}>হ্যাঁ, পেয়েছি</Btn>
                       <Btn busy={busy} className="small danger secondary" onClick={() => payAct('reject_payment', p.id, 'জানানো হয়েছে।')}>পাইনি</Btn></div>) : null}
                   {p.status === 'pending' && p.from === meId && !finalized ? (
-                    <div className="btn-row"><Btn busy={busy} className="small secondary" onClick={() => payAct('cancel_payment', p.id, 'বাতিল করা হয়েছে।')}>লেখাটি বাতিল করুন</Btn></div>) : null}
+                    <div className="btn-row"><Btn busy={busy} className="small" onClick={() => payAct('remind_payment', p.id, `${p.to_name}-কে মনে করানো হয়েছে।`)}>মনে করিয়ে দিন</Btn>
+                      <Btn busy={busy} className="small secondary" onClick={() => payAct('cancel_payment', p.id, 'বাতিল করা হয়েছে।')}>লেখাটি বাতিল করুন</Btn></div>) : null}
                 </div>
               );
             })}
@@ -124,6 +140,12 @@ export default function Report() {
 
       {finalized && rep.pending_payments > 0 ? <div className="banner" style={{ marginTop: 16 }}>এই মাস চূড়ান্ত হওয়ার সময় {rep.pending_payments}টি পরিশোধ নিশ্চিত হয়নি। সেগুলো হিসাবে ধরা হয়নি।</div> : null}
 
+      {s.isAdmin && !finalized && s.month === monthOf(today) ? <div className="section noprint">
+        <h2>সমন্বয় ভুক্তি</h2>
+        <p className="small muted">চূড়ান্ত হয়ে যাওয়া আগের মাসের ভুল সরাসরি বদলানো যায় না। এখানে চলতি মাসে একটি নিশ্চিত সমন্বয় যোগ করে দুজনের হিসাব শুধরে নিন।</p>
+        <button className="btn secondary" onClick={() => setAdjSheet(true)}>+ সমন্বয় যোগ করুন</button>
+      </div> : null}
+
       <div className="section noprint">
         {s.isAdmin && !finalized && monthEnded ? <Btn busy={busy} onClick={startFinalize}>এই মাসের হিসাব চূড়ান্ত করুন</Btn> : null}
         {s.isAdmin && !finalized && !monthEnded ? <p className="small muted center">মাস শেষ হলে অ্যাডমিন এখান থেকে হিসাব চূড়ান্ত করতে পারবেন।</p> : null}
@@ -132,6 +154,7 @@ export default function Report() {
       </div>
 
       {paySheet ? <PaySheet init={paySheet} onClose={() => setPaySheet(null)} /> : null}
+      {adjSheet ? <AdjustSheet onClose={() => setAdjSheet(false)} /> : null}
       {corrSheet ? <CorrectionSheet onClose={() => setCorrSheet(false)} /> : null}
       {finSheet ? (
         <Sheet title="চূড়ান্ত করার আগে দেখুন" onClose={() => setFinSheet(null)}>
@@ -169,7 +192,7 @@ function CorrectionCard({ c, g, admin, busy, onResolve }) {
   );
 }
 
-function PaySheet({ init, onClose }) {
+export function PaySheet({ init, onClose }) {
   const s = useStore(); const g = s.group; const dec = g.currency_decimals;
   const others = s.data.members.filter((m) => m.id !== s.me.id && m.user_id);
   const [to, setTo] = useState(init.to || others[0]?.id || '');
@@ -181,11 +204,17 @@ function PaySheet({ init, onClose }) {
     const a = parseMoney(amt, dec);
     if (!to) return toast('কাকে দিয়েছেন বেছে নিন।', true);
     if (!a || a <= 0) return toast('পরিশোধের টাকা লিখুন।', true);
-    run(async () => { await rpc('add_payment', { p_group: s.gid, p_token: token, p_month: s.month, p_to: to, p_amount: a, p_note: null }); await s.reloadGroup(); onClose(); }, 'পরিশোধ লেখা হয়েছে। প্রাপক নিশ্চিত করলে হিসাবে যোগ হবে।');
+    run(async () => {
+      const r = await rpcQueued('add_payment', { p_group: s.gid, p_token: token, p_month: s.month, p_to: to, p_amount: a, p_note: null });
+      if (r?.queued) toast('ইন্টারনেট নেই। লেখাটি ফোনে রাখা আছে, নেট এলে জমা হবে।');
+      else { toast('পরিশোধ লেখা হয়েছে। প্রাপক নিশ্চিত করলে হিসাবে যোগ হবে।'); await s.reloadGroup(); }
+      onClose();
+    });
   };
   return (
     <Sheet title="পরিশোধ লিখুন" onClose={onClose}>
       <form onSubmit={submit}>
+        <div className={`banner ${s.month < monthOf(todayDhaka()) ? '' : 'green'}`}>এই পরিশোধ <b>{monthLabel(s.month)}</b>-এর হিসাবে যাবে।{s.month < monthOf(todayDhaka()) ? ' (আগের মাস। মাস বদলাতে উপরের তীর ব্যবহার করুন।)' : ''}</div>
         <Field label="কাকে দিয়েছেন"><select value={to} onChange={(e) => setTo(e.target.value)}>{others.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></Field>
         <Field label={`কত ${g.currency_name}`}><input type="text" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} autoFocus /></Field>
         <p className="small muted">প্রাপকের কাছে নিশ্চিত করার অনুরোধ যাবে। তিনি নিশ্চিত করার পরই আপনার বাকি কমবে।</p>
@@ -236,6 +265,36 @@ function CorrectionSheet({ onClose }) {
           </>) : null}
         <Field label="কারণ (ঐচ্ছিক)"><input type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="যেমন: ৩০ তারিখ রাতে লিখতে ভুলে গিয়েছিলাম" /></Field>
         <div className="btn-row"><button type="button" className="btn secondary" onClick={onClose}>থাক</button><Btn busy={busy} type="submit">অনুরোধ পাঠান</Btn></div>
+      </form>
+    </Sheet>
+  );
+}
+
+function AdjustSheet({ onClose }) {
+  const s = useStore(); const g = s.group; const dec = g.currency_decimals;
+  const members = s.data.members.filter((m) => !m.left_on);
+  const [from, setFrom] = useState(members[0]?.id || ''); const [to, setTo] = useState(members[1]?.id || '');
+  const [amt, setAmt] = useState(''); const [why, setWhy] = useState('');
+  const [busy, run] = useAction(); const toast = useToast();
+  const token = useMemo(() => newToken(), []);
+  const submit = (e) => {
+    e.preventDefault();
+    const a = parseMoney(amt, dec);
+    if (from === to) return toast('দুজন আলাদা সদস্য বেছে নিন।', true);
+    if (!a || a <= 0) return toast('টাকার পরিমাণ লিখুন।', true);
+    if (!why.trim()) return toast('কারণ লিখুন।', true);
+    run(async () => { await rpc('add_adjustment', { p_group: s.gid, p_token: token, p_from: from, p_to: to, p_amount: a, p_reason: why.trim() }); await s.reloadGroup(); onClose(); }, 'সমন্বয় যোগ হয়েছে।');
+  };
+  const name = (id) => members.find((m) => m.id === id)?.display_name || '';
+  return (
+    <Sheet title="সমন্বয় যোগ করুন" onClose={onClose}>
+      <form onSubmit={submit}>
+        <p className="small muted">“{name(from)}-এর কাছ থেকে {name(to)}-কে” মানে: {name(from)}-এর দেনা কমবে, {name(to)}-এর পাওনা কমবে। এটি সবার খবরে দেখা যাবে।</p>
+        <Field label="যাঁর দেনা কমবে"><select value={from} onChange={(e) => setFrom(e.target.value)}>{members.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></Field>
+        <Field label="যাঁর পাওনা কমবে"><select value={to} onChange={(e) => setTo(e.target.value)}>{members.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></Field>
+        <Field label={`কত ${g.currency_name}`}><input inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} /></Field>
+        <Field label="কারণ (সবাই দেখবে)"><input maxLength={200} placeholder="যেমন: নভেম্বরে চাল দুবার ধরা পড়েছিল" value={why} onChange={(e) => setWhy(e.target.value)} /></Field>
+        <div className="btn-row"><button type="button" className="btn secondary" onClick={onClose}>থাক</button><Btn busy={busy} type="submit">যোগ করুন</Btn></div>
       </form>
     </Sheet>
   );

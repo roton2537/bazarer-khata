@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { supabase, configured } from './lib/supabase.js';
 import { ToastProvider, Spinner } from './ui.jsx';
 import { StoreProvider, useStore } from './store.jsx';
+import { OfflineBanner } from './screens/Banners.jsx';
+import { toBnDigits } from './lib/format.js';
+import RecoveryGate from './screens/RecoveryGate.jsx';
 import { AuthScreen, Onboarding, Welcome, Invite, Account, PasswordForm } from './screens/Entry.jsx';
 import { AcceptLink, OpenLedger } from './screens/PhoneAccess.jsx';
 import Home from './screens/Home.jsx';
@@ -98,17 +101,25 @@ function Authed({ hash, invite }) {
 
   const pendingForMe = (s.data.report.payments || []).filter((p) => p.status === 'pending' && p.to === s.me?.id).length;
   const tabs = [
-    ['/', 'home', 'হোম'], ['/list', 'basket', 'বাজার'], ['/report', 'report', 'রিপোর্ট', pendingForMe], ['/feed', 'bell', 'খবর'], ['/members', 'users', 'সদস্য'],
+    ['/', 'home', 'হোম'], ['/list', 'basket', 'বাজার'], ['/report', 'report', 'রিপোর্ট', pendingForMe], ['/members', 'users', 'সদস্য'], ['/settings', 'gear', 'সেটিংস'],
   ];
   let body;
   if (r === '/list') body = <PurchaseList />;
   else if (r === '/report') body = <Report />;
   else if (r === '/feed') body = <Feed />;
-  else if (r === '/members') body = <Members />;
+  else if (r === '/members') body = <Members view="members" />;
+  else if (r === '/settings') body = <Members view="settings" />;
   else body = <Home />;
   return (
     <>
-      <div className="app">{body}</div>
+      <div className="app">
+        <a className={`bell${r === '/feed' ? ' on' : ''}`} href="#/feed" aria-label={s.unread ? `খবর, ${s.unread}টি নতুন` : 'খবর'}>
+          <Icon name="bell" />{s.unread ? <span className="badge">{s.unread > 9 ? '৯+' : toBnDigits(s.unread)}</span> : null}
+        </a>
+        <OfflineBanner />
+        {body}
+      </div>
+      {s.isAdmin && s.me && !s.me.recovery_saved_at ? <RecoveryGate /> : null}
       <nav className="nav" aria-label="প্রধান মেনু"><div className="nav-in">
         {tabs.map(([p, ic, label, badge]) => (
           <a key={p} href={`#${p}`} className={r === p || (p === '/' && r === '') ? 'on' : ''}>

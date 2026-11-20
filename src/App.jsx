@@ -81,6 +81,14 @@ function Authed({ hash, invite }) {
   if (s.error && (!s.memberships || !s.data)) return <main className="app no-nav"><section className="card stack" role="alert"><h1>খাতা লোড করা যায়নি</h1><p>{s.error}</p><button className="btn" disabled={s.loading} onClick={() => s.refresh().catch(() => {})}>আবার চেষ্টা করুন</button><a href="#/account">আমার অ্যাকাউন্ট</a></section></main>;
   if (!s.memberships) return <div className="app no-nav center"><Spinner /></div>;
   if (invite) return <Invite key={invite} code={invite} />;
+  if (!s.memberships.length && hash === '#/open') return <main className="kh-welcome kh-new">
+    <header><img src="/icon.svg" alt="" width="32" height="32" />বাজারের খাতা</header>
+    <section className="kh-new-body card stack"><h1>আমার খাতা</h1>
+      <p>এই অ্যাকাউন্টে এখনও কোনো খাতা নেই। নতুন খাতা তৈরি করুন অথবা সদস্য হিসেবে অ্যাডমিনের আমন্ত্রণ লিংক খুলুন।</p>
+      <a className="btn" href="#/create">নতুন খাতা তৈরি করুন</a>
+      <a href="#/restore">রিকভারি কোড দিয়ে পুরোনো খাতা খুলুন</a>
+      <a href="#/account">আমার অ্যাকাউন্ট</a>
+    </section></main>;
   if (!s.memberships.length || hash === '#/new-group') return <Welcome signedIn />;
   if (!s.group || !s.data) return <Skeleton />;
 

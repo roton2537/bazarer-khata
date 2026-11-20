@@ -12,9 +12,11 @@ export function StoreProvider({ session, children }) {
   const [memberships, setMemberships] = useState(null);       // আমার সব সদস্যপদ (গ্রুপসহ)
   const [gid, setGidState] = useState(() => localStorage.getItem('bk_gid') || null);
   const [month, setMonth] = useState(monthOf(todayDhaka()));
-  const [data, setData] = useState(null);
+  const [loaded, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState(null);
+  const data = loaded?.gid === gid && loaded?.month === month ? loaded : null;
+  const [error, setError] = useState('');
   const seq = useRef(0);
 
   const loadMemberships = useCallback(async () => {
@@ -36,7 +38,7 @@ export function StoreProvider({ session, children }) {
 
   const loadGroup = useCallback(async (g, m) => {
     const my = ++seq.current;
-    setLoading(true);
+    setLoading(true); setError('');
     try {
       const [members, pauses, purchases, report, months, corrections, events] = await Promise.all([
         q(supabase.from('members').select('*').eq('group_id', g).order('seq')),
@@ -50,21 +52,26 @@ export function StoreProvider({ session, children }) {
       ]);
       if (my !== seq.current) return;
       setData({ members, pauses, purchases, report, months, corrections, events, gid: g, month: m });
-    } catch (e) { if (my === seq.current) toast(e.message, true); }
+    } catch (e) { if (my === seq.current) { setError(e.message); toast(e.message, true); } }
     finally { if (my === seq.current) setLoading(false); }
   }, [toast]);
 
-  useEffect(() => { loadMemberships().then((l) => {
-    if (l.length && !l.find((x) => x.group_id === gid)) setGid(l[0].group_id);
-  }).catch((e) => toast(e.message, true)); }, [loadMemberships]); // eslint-disable-line
-
-  useEffect(() => { if (gid && memberships?.find((x) => x.group_id === gid)) loadGroup(gid, month); }, [gid, month, memberships, loadGroup]);
-
   const refresh = useCallback(async () => {
-    const l = await loadMemberships();
-    if (gid && l.find((x) => x.group_id === gid)) await loadGroup(gid, month);
-    return l;
-  }, [gid, month, loadMemberships, loadGroup]);
+    try {
+      setError('');
+      const list = await loadMemberships();
+      return list;
+    } catch (e) {
+      setError(e.message); toast(e.message, true); throw e;
+    }
+  }, [loadMemberships, toast]);
+
+  useEffect(() => { refresh().catch(() => {}); }, [refresh]);
+  useEffect(() => {
+    if (!memberships?.length) return;
+    if (!memberships.some(row => row.group_id === gid)) { setGid(memberships[0].group_id); return; }
+    loadGroup(gid, month);
+  }, [gid, month, memberships, setGid, loadGroup]);
 
   // অন্যের নতুন খবর এলে স্বয়ংক্রিয় হালনাগাদ (Realtime চালু থাকলে)
   useEffect(() => {
@@ -86,6 +93,6 @@ export function StoreProvider({ session, children }) {
   const isActive = !!me && !me.left_on;
   const myRow = data?.report?.members?.find((m) => m.id === me?.id) || null;
 
-  const value = { session, uid, profile, memberships, gid, setGid, group, month, setMonth, data, loading, refresh, me, isAdmin, isActive, myRow, reloadGroup: () => loadGroup(gid, month) };
+  const value = { session, uid, profile, memberships, gid, setGid, group, month, setMonth, data, loading, error, refresh, me, isAdmin, isActive, myRow, reloadGroup: () => loadGroup(gid, month) };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

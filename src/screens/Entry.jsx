@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase, rpc, errText } from '../lib/supabase.js';
-import { Btn, Field, useAction, useToast, useConfirm } from '../ui.jsx';
+import { Btn, Field, useAction, useConfirm } from '../ui.jsx';
 import { CURRENCIES } from '../lib/format.js';
 import { useStore } from '../store.jsx';
+import { deviceSession, openLedger } from './PhoneAccess.jsx';
 import { go } from '../App.jsx';
 
 function Brand() {
@@ -22,16 +23,10 @@ function emailReturn(intent) {
 }
 
 export function Welcome({ signedIn }) {
-  const [code, setCode] = useState('');
   return <main className="app no-nav"><Brand /><section className="card stack">
-    <h2>কোন খাতায় যাবেন?</h2>
-    <form onSubmit={e => { e.preventDefault(); go('#/join/' + code.trim().toUpperCase()); }}>
-      <Field label="আমন্ত্রণ কোড"><input value={code} onChange={e => setCode(e.target.value.trim())} required pattern="[A-Za-z0-9]+" autoCapitalize="characters" /></Field>
-      <Btn type="submit">আমন্ত্রণ কোড দিয়ে যোগ দিন</Btn>
-    </form>
-    <button className="btn secondary" onClick={() => go('#/create')}>নতুন খাতা খুলুন</button>
-    <button className="btn ghost" onClick={() => go(signedIn ? '#/account' : '#/signin')}>{signedIn ? 'আমার অ্যাকাউন্ট' : 'আগের অ্যাকাউন্টে প্রবেশ করুন'}</button>
-    {signedIn && location.hash === '#/new-group' && <a href="#/">আমার খাতায় ফিরুন</a>}
+    <a className="btn" href="#/create">নতুন খাতা তৈরি করুন</a>
+    <a className="btn secondary" href={signedIn && location.hash === '#/new-group' ? '#/' : '#/open'}>আমার খাতা খুলুন</a>
+    <p className="small muted">সদস্য হিসেবে যোগ দিতে অ্যাডমিনের পাঠানো লিংক খুলুন।</p>
   </section></main>;
 }
 
@@ -112,17 +107,17 @@ export function AuthScreen({ invite, create, initialMode }) {
 }
 
 export function Onboarding() {
-  const s = useStore(); const toast = useToast();
   const [name, setName] = useState(''); const [cur, setCur] = useState('BDT');
-  const [myName, setMyName] = useState(s.profile?.name || s.session.user.user_metadata?.name || '');
+  const [myName, setMyName] = useState('');
   const [busy, run] = useAction();
 
   const create = (e) => {
     e.preventDefault();
     run(async () => {
       const c = CURRENCIES.find((x) => x.code === cur);
+      await deviceSession();
       const id = await rpc('create_group', { p_name: name, p_currency_code: c.code, p_symbol: c.symbol, p_cname: c.name, p_cgen: c.gen, p_decimals: c.decimals, p_my_name: myName });
-      s.setGid(id); await s.refresh(); toast('গ্রুপ তৈরি হয়েছে। আপনি এখন অ্যাডমিন।'); go('#/members');
+      openLedger(id, '/members');
     });
   };
   return (
@@ -192,7 +187,7 @@ export function Account() {
 
   return <main className="app no-nav"><section className="card stack"><h2>আমার অ্যাকাউন্ট</h2>
     <p>{s.profile?.name}</p><p>{s.session.user.email}</p>
-    <a className="btn secondary" href="#/recover">পাসওয়ার্ড বদলান</a>
+    {s.session.user.email && <a className="btn secondary" href="#/recover">পাসওয়ার্ড বদলান</a>}
     <Btn busy={busy} onClick={() => run(async () => {const {error} = await supabase.auth.signOut({scope:'local'}); if(error) throw error; go('#/');})}>সাইন আউট</Btn>
     <Btn busy={busy} className="danger secondary" onClick={delAccount}>আমার অ্যাকাউন্ট মুছে ফেলুন</Btn>
     <a href="#/">ফিরে যান</a></section>{confirmNode}</main>;

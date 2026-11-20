@@ -3,6 +3,7 @@ import { supabase, configured } from './lib/supabase.js';
 import { ToastProvider, Spinner } from './ui.jsx';
 import { StoreProvider, useStore } from './store.jsx';
 import { AuthScreen, Onboarding, Welcome, Invite, Account, PasswordForm } from './screens/Entry.jsx';
+import { AcceptLink, OpenLedger } from './screens/PhoneAccess.jsx';
 import Home from './screens/Home.jsx';
 import { PurchaseList, PurchaseForm } from './screens/Purchases.jsx';
 import Report from './screens/Report.jsx';
@@ -57,6 +58,10 @@ function Root() {
 
   if (session === undefined) return <div className="app no-nav center"><Spinner /></div>;
   if (emailIntent) return <Spinner />;
+  const token = hash.match(/^#\/access\/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/i)?.[1];
+  if (token) return <AcceptLink key={token} token={token} />;
+  if (hash === '#/open') return <OpenLedger signedIn={!!session} />;
+  if (hash === '#/create') return <Onboarding />;
   if (!session) {
     if (hash.startsWith('#/recover')) return <AuthScreen key="recover" initialMode="forgot" />;
     if (invite || ['#/create', '#/signin'].includes(hash)) return <AuthScreen key={hash} invite={invite} create={hash === '#/create'} />;
@@ -71,7 +76,6 @@ function Authed({ hash, invite }) {
   if (hash === '#/account') return <Account />;
   if (!s.memberships) return <div className="app no-nav center"><Spinner /></div>;
   if (invite) return <Invite key={invite} code={invite} />;
-  if (hash === '#/create') return <Onboarding />;
   if (!s.memberships.length || hash === '#/new-group') return <Welcome signedIn />;
   if (!s.group || !s.data) return <Skeleton />;
 

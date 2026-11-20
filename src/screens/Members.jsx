@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { rpc } from '../lib/supabase.js';
 import { useStore } from '../store.jsx';
 import { Btn, Field, Sheet, Tag, useAction, useConfirm, useToast } from '../ui.jsx';
@@ -59,7 +59,7 @@ export default function Members() {
         ))}
       </div>
 
-      {s.isAdmin && <AdminInvite key={s.gid} group={g} />}
+      {s.isAdmin && <AdminInvite key={s.gid} group={g} members={s.data.members} />}
 
       {s.isActive ? (
         <div className="card">
@@ -84,7 +84,7 @@ export default function Members() {
 
       <div className="card">
         <h2>খাতার সেটিংস</h2>
-        <p className="small muted">সাইন ইন করা আছে: {s.session.user.email}</p>
+        <p className="small muted">{s.session.user.email || s.me?.display_name}</p>
         <div className="stack" style={{ marginTop: 8 }}>
           {s.isAdmin && others.length > 0 ? <button className="btn secondary" onClick={() => setTransferSheet('transfer')}>অ্যাডমিনের দায়িত্ব অন্যকে দিন</button> : null}
           {s.isActive ? <Btn busy={busy} className="danger secondary" onClick={leave}>এই গ্রুপ ছেড়ে যান</Btn> : null}
@@ -151,37 +151,49 @@ function TransferSheet({ mode, others, onClose }) {
   );
 }
 
-function AdminInvite({ group }) {
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [busy, run] = useAction();
-  const link = code && window.location.origin + '/#/join/' + code;
-  function create(event) {
-    event.preventDefault();
-    run(async () => {
-      setCode(await rpc('create_member_invitation', { p_group: group.id, p_email: email.trim() }));
-    });
+function AdminInvite({group, members}) {
+  const [label,setLabel] = useState('');
+  const [links,setLinks] = useState([]);
+  const [showCode,setShowCode] = useState(false);
+  const [busy,run] = useAction();
+  const [ask,confirmNode] = useConfirm();
+  const load = () => rpc('pending_access_links', {p_group:group.id});
+  useEffect(() => {
+    let active = true;
+    run(async () => { const rows = await load(); if (active) setLinks(rows); });
+    return () => { active = false; };
+  }, [group.id]);
+  const issue = (target = null) => run(async () => {
+    await rpc('issue_access_link', {p_group:group.id,p_target:target,p_label:label});
+    setLinks(await load()); setLabel('');
+  });
+  async function cancel(row) {
+    if (!await ask({title:'লিংক বাতিল করবেন?',body:row.label,confirmText:'বাতিল করুন'})) return;
+    run(async () => { await rpc('cancel_access_link', {p_group:group.id,p_token:row.token}); setLinks(await load()); });
   }
-  async function share() {
-    if (!navigator.share) return navigator.clipboard.writeText(link);
-    try { await navigator.share({ text: group.name + ' খাতায় যোগ দিন', url: link }); }
-    catch (error) { if (error.name !== 'AbortError') throw error; }
-  }
-  return <section className="card">
-    <h2>সদস্য যোগ করুন</h2>
-    <form className="stack" onSubmit={create}>
-      <Field label="সদস্যের ইমেইল"><input type="email" required disabled={busy} value={email}
-        onChange={event => { setEmail(event.target.value); setCode(''); }} /></Field>
-      <p className="small muted">এই ইমেইলের অ্যাকাউন্ট দিয়েই আমন্ত্রণ গ্রহণ করা যাবে। নতুন লিংক বানালে এই ইমেইলের আগের লিংক বাতিল হবে।</p>
-      <Btn type="submit" busy={busy}>আমন্ত্রণ লিংক তৈরি করুন</Btn>
+  return <section className="card stack"><h2>সদস্য যোগ করুন</h2>
+    <form onSubmit={e => { e.preventDefault(); issue(); }}>
+      <Field label="সদস্যের নাম"><input required maxLength={100} value={label} onChange={e => setLabel(e.target.value)} /></Field>
+      <Btn busy={busy}>আমন্ত্রণ লিংক তৈরি করুন</Btn>
     </form>
-    {code && <div className="stack">
-      <div className="banner green break">{link}</div>
-      <div className="btn-row">
-        {navigator.share && <button className="btn small" onClick={() => run(share)}>আমন্ত্রণ পাঠান</button>}
-        <a className="btn small secondary" href={'mailto:' + encodeURIComponent(email.trim()) + '?subject=' + encodeURIComponent(group.name + ' খাতায় আমন্ত্রণ') + '&body=' + encodeURIComponent(link)}>ইমেইলে পাঠান</a>
-        <button className="btn small secondary" onClick={() => run(() => navigator.clipboard.writeText(link), 'লিংক কপি হয়েছে।')}>লিংক কপি</button>
-      </div>
-    </div>}
+    {members.filter(m => !m.left_on && m.role === 'member').map(m =>
+      <div className="row between" key={m.id}><span>{m.display_name}</span>
+        <Btn busy={busy} className="secondary small" onClick={() => issue(m.id)}>নতুন ফোনের লিংক তৈরি করুন</Btn></div>)}
+    {links.map(row => {
+      const link = window.location.origin + '/#/access/' + row.token;
+      if (row.purpose === 'backup') return <div className="stack" key={row.token}><h3>অ্যাডমিনের রিকভারি কোড</h3>
+        <p>ফোন বদলালে খাতা ফেরত পেতে কোডটি ব্যক্তিগতভাবে সংরক্ষণ করুন।</p>
+        <Btn className="secondary" onClick={() => setShowCode(!showCode)}>{showCode ? 'কোড লুকান' : 'রিকভারি কোড দেখুন'}</Btn>
+        {showCode && <><code className="break">{row.token}</code><Btn onClick={() => run(() => navigator.clipboard.writeText(row.token),'কোড কপি হয়েছে।')}>কোড কপি</Btn></>}</div>;
+      return <div className="stack" key={row.token}><strong>{row.label} · {row.purpose === 'join' ? 'আমন্ত্রণ' : 'নতুন ফোন'}</strong>
+        <span className="small break">{link}</span><div className="btn-row">
+          <Btn className="small" onClick={() => run(() => navigator.clipboard.writeText(link),'লিংক কপি হয়েছে।')}>লিংক কপি</Btn>
+          <a className="btn small secondary" href={'https://wa.me/?text='+encodeURIComponent(group.name+' · '+link)} target="_blank" rel="noreferrer">WhatsApp</a>
+          {navigator.share && <Btn className="small secondary" onClick={() => run(async () => {
+            try { await navigator.share({title:group.name,url:link}); } catch(e) { if(e.name !== 'AbortError') throw e; }
+          })}>শেয়ার করুন</Btn>}
+          <Btn className="small ghost" busy={busy} onClick={() => cancel(row)}>লিংক বাতিল</Btn>
+        </div></div>;
+    })}{confirmNode}
   </section>;
 }

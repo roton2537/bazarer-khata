@@ -294,3 +294,36 @@ test('নতুন সদস্য আমন্ত্রণের কোডে �
   const names = (await ctx.as('newbie', 'select display_name from members')).rows.length;
   assert.equal(names, 5);
 });
+
+test('একবারের আমন্ত্রণ, বাতিল, ফোন বদল ও অ্যাডমিনের রিকভারি', async () => {
+  const ctx = new Ctx(await newDb());
+  const {gid,mem} = await fourMembers(ctx);
+  for (const name of ['phone','phone2','admin2']) await ctx.user(name);
+  await ctx.admin("update auth.users set email=null where email like 'phone%@x.test' or email='admin2@x.test'");
+  const issue = (user,label,target) => ctx.rpc(user,'issue_access_link',gid,label,target);
+  const accept = (user,token,name) => ctx.rpc(user,'accept_access_link',token,name);
+  const links = user => ctx.as(user,'select * from public.pending_access_links($1)',[gid]);
+  await ctx.fails(issue('karim','নতুন',null),/অ্যাডমিন/);
+  assert.equal((await links('karim')).rows.length,0);
+  const cancelled = await issue('rahim','বাতিল',null);
+  await ctx.rpc('rahim','cancel_access_link',gid,cancelled);
+  await ctx.fails(accept('phone',cancelled,'নাম'),/বাতিল/);
+  const invitation = await issue('rahim','নাম',null);
+  assert.equal(await accept('phone',invitation,'নতুন নাম'),gid);
+  await ctx.fails(accept('phone2',invitation,'অন্য'),/ব্যবহৃত/);
+  const member = (await ctx.as('phone',"select id from members where display_name='নতুন নাম'")).rows[0];
+  const restore = await issue('rahim','',member.id);
+  await accept('phone2',restore,'');
+  assert.equal((await ctx.as('phone','select id from groups')).rows.length,0);
+  assert.equal((await ctx.as('phone2','select id from members where user_id=auth.uid()')).rows[0].id,member.id);
+  const backup = (await links('rahim')).rows.find(l => l.purpose==='backup').token;
+  await accept('admin2',backup,'');
+  await ctx.fails(accept('phone',backup,''),/ব্যবহৃত/);
+  await ctx.fails(issue('rahim','পরবর্তী',null),/অ্যাডমিন/);
+  const fresh = (await links('admin2')).rows.find(l => l.purpose==='backup').token;
+  assert.notEqual(fresh,backup);
+  const memberRestore = await issue('admin2','',mem.karim);
+  await ctx.rpc('admin2','transfer_admin',gid,mem.karim);
+  await ctx.fails(accept('phone',memberRestore,''),/বাতিল/);
+  await ctx.fails(accept('phone',fresh,''),/বাতিল/);
+});

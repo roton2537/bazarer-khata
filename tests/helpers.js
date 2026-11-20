@@ -20,6 +20,7 @@ export async function newDb() {
   `);
   await db.exec(MIGRATION);
   await db.exec(readFileSync(join(here, '../supabase/migrations/0002_admin_invitations.sql'), 'utf8'));
+  await db.exec(readFileSync(join(here, '../supabase/migrations/0003_phone_access.sql'), 'utf8'));
   return db;
 }
 

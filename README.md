@@ -7,15 +7,15 @@ React + Vite (ফ্রন্টএন্ড) · Supabase (Auth, Postgres, RLS, 
 
 ### ১. Supabase
 1. [supabase.com](https://supabase.com) এ নতুন প্রজেক্ট খুলুন।
-2. **SQL Editor** এ `supabase/migrations/0001_bazar_khata.sql` তারপর `supabase/migrations/0002_admin_invitations.sql` ক্রমানুসারে Run করুন। বিদ্যমান ইনস্টলেশনে শুধু নতুন মাইগ্রেশন চালান। পুরোনো শেয়ার করা কোডের বদলে অ্যাডমিন সদস্যের ইমেইলের জন্য নতুন আমন্ত্রণ তৈরি করবেন। (অথবা `supabase db push`)
-3. **Authentication → Providers → Email** চালু রাখুন। দ্রুত পরীক্ষার জন্য “Confirm email” বন্ধ করতে পারেন; চালু রাখলে নতুন সদস্য ইমেইলের লিংক খুলে নিশ্চিত করার পর সাইন ইন করবেন।
+2. **SQL Editor** এ `supabase/migrations/0001_bazar_khata.sql` থেকে শুরু করে `supabase/migrations/` ফোল্ডারের সব SQL ফাইল নম্বর অনুযায়ী চালান। বিদ্যমান ইনস্টলেশনে শুধু নতুন মাইগ্রেশন চালান। নতুন আমন্ত্রণ নাম দিয়ে তৈরি হয় এবং একবার ব্যবহার করা যায়। (অথবা `supabase db push`)
+3. নতুন ফোনে ইমেইল ছাড়া প্রবেশের জন্য Supabase Authentication সেটিংসে **Allow anonymous sign-ins** চালু করুন। পুরোনো অ্যাকাউন্টের জন্য **Authentication → Providers → Email** চালু রাখুন।
 4. **Authentication → URL Configuration**: *Site URL* এ আপনার Vercel ডোমেইন দিন এবং *Redirect URLs* এ একই ডোমেইন যোগ করুন।
 5. **Project Settings → API** থেকে `Project URL` ও `anon public` key নিন।
 
 ### ২. Vercel
 1. এই ফোল্ডারটি GitHub রেপোতে পুশ করে Vercel-এ Import করুন (Framework: Vite)।
 2. Environment Variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (ঐচ্ছিক: `VITE_VAPID_PUBLIC_KEY`)।
-3. Deploy। আমন্ত্রণ-লিংক হবে `https://<আপনার-ডোমেইন>/#/join/<কোড>`।
+3. Deploy। আমন্ত্রণ-লিংক হবে `https://<আপনার-ডোমেইন>/#/access/<টোকেন>`।
 
 ### ৩. পুশ নোটিফিকেশন (ঐচ্ছিক)
 1. `npx web-push generate-vapid-keys` দিয়ে কী বানান। Public key টি `VITE_VAPID_PUBLIC_KEY`-তে দিন।

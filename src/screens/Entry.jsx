@@ -138,22 +138,25 @@ export function Onboarding() {
       openLedger(id, '/members');
     });
   };
-  return (
-    <div className="app no-nav">
-      <Brand />
-      <div className="card">
-        <h2>নতুন খাতা খুলুন</h2>
-          <form onSubmit={create}>
-            <Field label="গ্রুপের নাম"><input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="যেমন: মেসের বাজার" required maxLength={60} /></Field>
-            <Field label="মুদ্রা"><select value={cur} onChange={(e) => setCur(e.target.value)}>{CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.name} ({c.symbol})</option>)}</select></Field>
-            <Field label="গ্রুপে আপনার নাম"><input type="text" value={myName} onChange={(e) => setMyName(e.target.value)} required /></Field>
-            <p className="small muted">গ্রুপ তৈরি করলে আপনি অ্যাডমিন হবেন। পরে আমন্ত্রণের লিংক পাঠিয়ে সবাইকে যোগ করতে পারবেন।</p>
-            <div style={{ marginTop: 12 }}><Btn busy={busy} type="submit">গ্রুপ তৈরি করুন</Btn></div>
-          </form>
+  return <main className="kh-welcome kh-new">
+    <header><img src="/icon.svg" alt="" width="32" height="32" />বাজারের খাতা
+      <a href="#/">← ফিরে যান</a>
+    </header>
+    <div className="kh-new-body">
+      <h1>নতুন খাতা তৈরি করুন</h1>
+      <div className="kh-book" aria-hidden="true">
+        <span className="kh-book-title">{name.trim() || 'আপনার বাজারের খাতা'}</span>
+        <span className="kh-book-by">{myName.trim() || 'অ্যাডমিন'} · {cur}</span>
       </div>
-      <a href="#/">ফিরে যান</a>
+      <form onSubmit={create}>
+        <Field label="খাতার নাম"><input required pattern={'.*\\S.*'} maxLength={60} placeholder="যেমন: রিয়াদের বাজার" value={name} onChange={e => setName(e.target.value)} /></Field>
+        <Field label="আপনার নাম"><input required pattern={'.*\\S.*'} autoComplete="name" placeholder="যে নামে সদস্যরা আপনাকে চিনবেন" value={myName} onChange={e => setMyName(e.target.value)} /></Field>
+        <Field label="হিসাবের মুদ্রা"><select value={cur} onChange={e => setCur(e.target.value)}>{CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}</select></Field>
+        <p>আপনি এই খাতার অ্যাডমিন হবেন। খাতা তৈরির পর সদস্যদের আমন্ত্রণ জানাতে পারবেন।</p>
+        <Btn busy={busy} type="submit">খাতা তৈরি করুন <span aria-hidden="true">→</span></Btn>
+      </form>
     </div>
-  );
+  </main>;
 }
 
 

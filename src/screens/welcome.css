@@ -30,3 +30,20 @@
   .kh-slip,.kh-cover { scale:1.4; }
   .kh-intro nav { max-width:360px; }
 }
+
+.kh-new header a { margin-left:auto; font-size:15px; font-weight:500; text-decoration:none; color:#355f4a; }
+.kh-new-body { max-width:490px; margin:25px auto 0; }
+.kh-new h1 { font:700 clamp(29px,8vw,42px)/1.35 'Noto Serif Bengali',serif; letter-spacing:-.025em; }
+.kh-book { position:relative; margin:17px 0 21px; border-radius:4px 14px 14px 4px; overflow:hidden; padding:23px 44px 24px 34px; color:#fff7db; background:linear-gradient(90deg,#123e31 11px,#699278 12px,#1a4e3e 14px,#21573f); box-shadow:0 3px 0 #d9c89e,0 5px 0 #a8ae95; }
+.kh-book::after { content:''; position:absolute; inset:0 23px 0 auto; width:10px; background:repeating-linear-gradient(0deg,#c7a567 0 1px,#e6c68b 1px 3px); }
+.kh-book-title { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font:700 22px/1.55 'Noto Serif Bengali',serif; }
+.kh-book-by { color:#e0e8d7; display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:14px; }
+.kh-new form { display:grid; gap:14px; }
+.kh-new .field { display:grid; gap:5px; margin:0; }
+.kh-new .field > span { color:#243e31; font-size:16px; font-weight:600; }
+.kh-new .field input,.kh-new .field select { margin:0; width:100%; min-height:48px; padding:10px 14px; border:1px solid #acb8aa; border-radius:9px; background-color:#fffef9; color:#253e32; font:inherit; }
+.kh-new input::placeholder { color:#707a70; }
+.kh-new input:focus-visible,.kh-new select:focus-visible,.kh-new a:focus-visible,.kh-new button:focus-visible { outline:3px solid #ae8039; outline-offset:2px; }
+.kh-new form p { margin:1px 0 0; font-size:14px; line-height:1.65; color:#516255; }
+.kh-new .btn { min-height:50px; background:#174e3c; color:white; border-radius:10px; }
+.kh-new .btn span { margin-left:7px; }

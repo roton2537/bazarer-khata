@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { rpc } from '../lib/supabase.js';
 import { useStore } from '../store.jsx';
 import { Btn, Field, Sheet, Tag, useAction, useConfirm, useToast } from '../ui.jsx';
@@ -14,21 +14,11 @@ export default function Members() {
   const [pauseSheet, setPauseSheet] = useState(false);
   const [transferSheet, setTransferSheet] = useState(null); // 'leave' | 'transfer'
   const today = todayDhaka();
-  const link = `${window.location.origin}/#/join/${g.invite_code}`;
   const pausedNow = (m) => s.data.pauses.some((p) => p.member_id === m.id && p.start_date <= today && (!p.end_date || today < p.end_date));
   const myPauses = s.data.pauses.filter((p) => p.member_id === s.me?.id && (!p.end_date || p.end_date > today));
   const others = s.data.members.filter((m) => !m.left_on && m.id !== s.me?.id && m.user_id);
   const pushOn = !!s.profile?.push_enabled;
 
-  const copy = async (t, msg) => { try { await navigator.clipboard.writeText(t); toast(msg); } catch { toast('কপি করা যায়নি। হাতে লিখে নিন: ' + t, true); } };
-  const share = async () => {
-    const text = `“${g.name}” গ্রুপে যোগ দিন (বাজারের খাতা):\n${link}\nকোড: ${g.invite_code}`;
-    if (navigator.share) { try { await navigator.share({ title: 'বাজারের খাতা', text }); } catch { /* বাতিল */ } } else copy(text, 'আমন্ত্রণ কপি হয়েছে।');
-  };
-  const regen = async () => {
-    const ok = await ask({ title: 'নতুন আমন্ত্রণ-কোড বানাবেন?', body: 'আগের লিংক ও কোড আর কাজ করবে না। যাঁরা আগেই যোগ দিয়েছেন তাঁদের কোনো পরিবর্তন হবে না।', confirmText: 'নতুন কোড বানান' });
-    if (ok) run(async () => { await rpc('regenerate_invite', { p_group: s.gid }); await s.refresh(); }, 'নতুন কোড তৈরি হয়েছে।');
-  };
   const togglePush = () => run(async () => {
     if (pushOn) await disablePush(); else await enablePush();
     await s.refresh();
@@ -69,17 +59,7 @@ export default function Members() {
         ))}
       </div>
 
-      {s.isActive ? (
-        <div className="card">
-          <h2>সদস্য যোগ করুন</h2>
-          <p className="small muted">নিচের লিংক ফোনে খুলে খাতার নাম দেখে সদস্য তাঁর যোগদান নিশ্চিত করবেন।</p>
-          <div className="banner green break" style={{ marginTop: 8 }}>{link}</div>
-          <div className="row between" style={{ marginTop: 8 }}><span className="muted">কোড</span><b style={{ fontSize: 22, letterSpacing: 2 }}>{g.invite_code}</b></div>
-          <div className="btn-row"><button className="btn small" onClick={share}>লিংক পাঠান</button><button className="btn small secondary" onClick={() => copy(link, 'লিংক কপি হয়েছে।')}>লিংক কপি</button>
-            <button className="btn small secondary" onClick={() => copy(g.invite_code, 'কোড কপি হয়েছে।')}>কোড কপি</button></div>
-          {s.isAdmin ? <div className="btn-row"><button className="btn small ghost" onClick={regen}>নতুন কোড বানান</button></div> : null}
-        </div>
-      ) : null}
+      {s.isAdmin && <AdminInvite key={s.gid} group={g} members={s.data.members} />}
 
       {s.isActive ? (
         <div className="card">
@@ -104,7 +84,7 @@ export default function Members() {
 
       <div className="card">
         <h2>খাতার সেটিংস</h2>
-        <p className="small muted">সাইন ইন করা আছে: {s.session.user.email}</p>
+        <p className="small muted">{s.session.user.email || s.me?.display_name}</p>
         <div className="stack" style={{ marginTop: 8 }}>
           {s.isAdmin && others.length > 0 ? <button className="btn secondary" onClick={() => setTransferSheet('transfer')}>অ্যাডমিনের দায়িত্ব অন্যকে দিন</button> : null}
           {s.isActive ? <Btn busy={busy} className="danger secondary" onClick={leave}>এই গ্রুপ ছেড়ে যান</Btn> : null}
@@ -169,4 +149,51 @@ function TransferSheet({ mode, others, onClose }) {
       </form>
     </Sheet>
   );
+}
+
+function AdminInvite({group, members}) {
+  const [label,setLabel] = useState('');
+  const [links,setLinks] = useState([]);
+  const [showCode,setShowCode] = useState(false);
+  const [busy,run] = useAction();
+  const [ask,confirmNode] = useConfirm();
+  const load = () => rpc('pending_access_links', {p_group:group.id});
+  useEffect(() => {
+    let active = true;
+    run(async () => { const rows = await load(); if (active) setLinks(rows); });
+    return () => { active = false; };
+  }, [group.id]);
+  const issue = (target = null) => run(async () => {
+    await rpc('issue_access_link', {p_group:group.id,p_target:target,p_label:label});
+    setLinks(await load()); setLabel('');
+  });
+  async function cancel(row) {
+    if (!await ask({title:'লিংক বাতিল করবেন?',body:row.label,confirmText:'বাতিল করুন'})) return;
+    run(async () => { await rpc('cancel_access_link', {p_group:group.id,p_token:row.token}); setLinks(await load()); });
+  }
+  return <section className="card stack"><h2>সদস্য যোগ করুন</h2>
+    <form onSubmit={e => { e.preventDefault(); issue(); }}>
+      <Field label="সদস্যের নাম"><input required maxLength={100} value={label} onChange={e => setLabel(e.target.value)} /></Field>
+      <Btn busy={busy}>আমন্ত্রণ লিংক তৈরি করুন</Btn>
+    </form>
+    {members.filter(m => !m.left_on && m.role === 'member').map(m =>
+      <div className="row between" key={m.id}><span>{m.display_name}</span>
+        <Btn busy={busy} className="secondary small" onClick={() => issue(m.id)}>নতুন ফোনের লিংক তৈরি করুন</Btn></div>)}
+    {links.map(row => {
+      const link = window.location.origin + '/#/access/' + row.token;
+      if (row.purpose === 'backup') return <div className="stack" key={row.token}><h3>অ্যাডমিনের রিকভারি কোড</h3>
+        <p>ফোন বদলালে খাতা ফেরত পেতে কোডটি ব্যক্তিগতভাবে সংরক্ষণ করুন।</p>
+        <Btn className="secondary" onClick={() => setShowCode(!showCode)}>{showCode ? 'কোড লুকান' : 'রিকভারি কোড দেখুন'}</Btn>
+        {showCode && <><code className="break">{row.token}</code><Btn onClick={() => run(() => navigator.clipboard.writeText(row.token),'কোড কপি হয়েছে।')}>কোড কপি</Btn></>}</div>;
+      return <div className="stack" key={row.token}><strong>{row.label} · {row.purpose === 'join' ? 'আমন্ত্রণ' : 'নতুন ফোন'}</strong>
+        <span className="small break">{link}</span><div className="btn-row">
+          <Btn className="small" onClick={() => run(() => navigator.clipboard.writeText(link),'লিংক কপি হয়েছে।')}>লিংক কপি</Btn>
+          <a className="btn small secondary" href={'https://wa.me/?text='+encodeURIComponent(group.name+' · '+link)} target="_blank" rel="noreferrer">WhatsApp</a>
+          {navigator.share && <Btn className="small secondary" onClick={() => run(async () => {
+            try { await navigator.share({title:group.name,url:link}); } catch(e) { if(e.name !== 'AbortError') throw e; }
+          })}>শেয়ার করুন</Btn>}
+          <Btn className="small ghost" busy={busy} onClick={() => cancel(row)}>লিংক বাতিল</Btn>
+        </div></div>;
+    })}{confirmNode}
+  </section>;
 }

@@ -37,7 +37,20 @@ export const supabase = {
   auth: { getSession: async () => ({ data: { session: { user: { id: UID, email: 'rahim@example.com' } } } }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }), signOut: async () => {} },
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {}, rpc: async () => ({ data: null, error: null }),
 };
-export async function rpc(name) {
+const accessLinks = [];
+export async function rpc(name, args = {}) {
+  if (name === 'pending_access_links') return [...accessLinks];
+  if (name === 'issue_access_link') {
+    const token = crypto.randomUUID();
+    const target = members.find(m => m.id === args.p_target);
+    accessLinks.push({token, label: target?.display_name || args.p_label, purpose: target ? 'restore' : 'join'});
+    return token;
+  }
+  if (name === 'cancel_access_link') {
+    const index = accessLinks.findIndex(link => link.token === args.p_token);
+    if (index >= 0) accessLinks.splice(index, 1);
+    return;
+  }
   if (name === 'month_report') return report;
   if (name === 'group_months') return [{ month: '2026-11-01', finalized: false }];
   if (name === 'list_corrections') return [];

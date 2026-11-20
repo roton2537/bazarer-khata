@@ -148,16 +148,15 @@ export function Invite({ code }) {
   const s = useStore();
   const group = useInviteName(code);
   const [busy, run] = useAction();
-  const existing = s.memberships.find(m => !m.left_on && m.groups.invite_code === code);
   const open = () => run(async () => {
-    const id = existing?.group_id || await rpc('join_group', {p_code: code, p_my_name: s.profile?.name || ''});
+    const id = await rpc('join_group', {p_code: code, p_my_name: s.profile?.name || ''});
     s.setGid(id); await s.refresh(); go('#/');
   });
   return <main className="app no-nav"><Brand /><section className="card stack">
     <h2>{group.name || 'খাতার আমন্ত্রণ'}</h2><p>{s.session.user.email}</p>
     {group.error ? <><p role="alert">{group.error}</p><button onClick={group.retry} className="btn secondary">আবার চেষ্টা করুন</button></> :
-      <><p>{existing ? 'আপনি ইতিমধ্যে এই খাতার সদস্য।' : 'যোগদান নিশ্চিত করলে আজ থেকে আপনার নামে বাজারের ভাগ ধরা হবে।'}</p>
-      <Btn busy={busy} disabled={!group.name} onClick={open}>{existing ? 'খাতা খুলুন' : 'এই খাতায় যোগ দিন'}</Btn></>}
+      <><p>আমন্ত্রিত ইমেইল দিয়ে যোগদান নিশ্চিত করুন। নতুন সদস্যের বাজারের ভাগ আজ থেকে ধরা হবে।</p>
+      <Btn busy={busy} disabled={!group.name} onClick={open}>এই খাতায় যোগ দিন</Btn></>}
     <button className="btn secondary" onClick={() => run(async () => {const {error} = await supabase.auth.signOut({scope:'local'}); if (error) throw error;})}>অন্য অ্যাকাউন্ট ব্যবহার করুন</button>
     <a href="#/">এখন থাক</a>
   </section></main>;

@@ -7,7 +7,7 @@ React + Vite (ফ্রন্টএন্ড) · Supabase (Auth, Postgres, RLS, 
 
 ### ১. Supabase
 1. [supabase.com](https://supabase.com) এ নতুন প্রজেক্ট খুলুন।
-2. **SQL Editor** এ `supabase/migrations/0001_bazar_khata.sql` সম্পূর্ণ পেস্ট করে Run করুন। (অথবা `supabase db push`)
+2. **SQL Editor** এ `supabase/migrations/0001_bazar_khata.sql` তারপর `supabase/migrations/0002_admin_invitations.sql` ক্রমানুসারে Run করুন। বিদ্যমান ইনস্টলেশনে শুধু নতুন মাইগ্রেশন চালান। পুরোনো শেয়ার করা কোডের বদলে অ্যাডমিন সদস্যের ইমেইলের জন্য নতুন আমন্ত্রণ তৈরি করবেন। (অথবা `supabase db push`)
 3. **Authentication → Providers → Email** চালু রাখুন। দ্রুত পরীক্ষার জন্য “Confirm email” বন্ধ করতে পারেন; চালু রাখলে নতুন সদস্য ইমেইলের লিংক খুলে নিশ্চিত করার পর সাইন ইন করবেন।
 4. **Authentication → URL Configuration**: *Site URL* এ আপনার Vercel ডোমেইন দিন এবং *Redirect URLs* এ একই ডোমেইন যোগ করুন।
 5. **Project Settings → API** থেকে `Project URL` ও `anon public` key নিন।

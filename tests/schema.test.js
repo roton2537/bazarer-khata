@@ -110,7 +110,7 @@ test('নতুন সদস্যের যোগদানের আগের �
   await ctx.setToday('2026-11-12');
   const early = await ctx.rpc('rahim', 'add_purchase', gid, uuid(), '2026-11-11', mem.rahim, 'আগের বাজার', T(400), '[]');
   await ctx.user('nila');
-  const code = (await ctx.admin('select invite_code from groups where id=$1', [gid])).rows[0].invite_code;
+  const code = await ctx.rpc('rahim', 'create_member_invitation', gid, 'nila@x.test');
   await ctx.rpc('nila', 'join_group', code, 'নীলা');
   const nilaId = (await ctx.admin(`select id from members where display_name='নীলা'`)).rows[0].id;
   const later = await ctx.rpc('rahim', 'add_purchase', gid, uuid(), '2026-11-12', mem.rahim, 'পরের বাজার', T(500), '[]');
@@ -235,7 +235,7 @@ test('অনুমতি: বাইরের কেউ অন্য গ্রু
   await ctx.fails(ctx.rpc('outsider', 'finalize_month', gid, '2026-11-01', true), /শুধু অ্যাডমিন/);
   await ctx.fails(ctx.rpc('outsider', 'delete_group', gid), /শুধু অ্যাডমিন/);
   await ctx.fails(ctx.rpc('karim', 'delete_group', gid), /শুধু অ্যাডমিন/);
-  await ctx.fails(ctx.rpc('karim', 'regenerate_invite', gid), /শুধু অ্যাডমিন/);
+  await ctx.fails(ctx.rpc('karim', 'create_member_invitation', gid, 'other@x.test'), /শুধু অ্যাডমিন/);
   await ctx.fails(ctx.as('outsider', `insert into purchases(group_id,bazar_date,buyer_id,description,amount,created_by,client_token) values ('${gid}','2026-11-10','${mem.rahim}','x',1,'${mem.rahim}',gen_random_uuid())`), /permission denied/);
   await ctx.fails(ctx.as('outsider', `select * from push_subscriptions`), /permission denied/);
   // anon শুধু গ্রুপের নাম দেখতে পারে, অন্য কিছু নয়
@@ -245,8 +245,8 @@ test('অনুমতি: বাইরের কেউ অন্য গ্রু
   const nm = await ctx.db.query(`select public.group_name_by_code((select invite_code from groups limit 1)) as n`).catch((e) => e);
   // (anon-এর groups-এ SELECT নেই বলে উপরের সাব-কুয়েরি ব্যর্থ — কোড হাতে দিয়ে আলাদা পরীক্ষা)
   await ctx.db.exec('reset role');
-  const code = (await ctx.admin('select invite_code from groups')).rows[0].invite_code;
-  await ctx.db.exec('set role anon');
+  const code = await ctx.rpc('rahim', 'create_member_invitation', gid, 'newbie@x.test');
+  await ctx.db.exec('reset role; set role anon');
   assert.equal((await ctx.db.query(`select public.group_name_by_code('${code}') as n`)).rows[0].n, 'বাসা');
   await ctx.db.exec('reset role');
   // নিজের বাজারই সংশোধন করা যায়; অন্যেরটা নয়
@@ -280,7 +280,11 @@ test('গ্রুপ ও অ্যাকাউন্ট ব্যবস্থ�
 
 test('নতুন সদস্য আমন্ত্রণের কোডে সরাসরি সঠিক গ্রুপে যোগ দেন; ভুল কোড ব্যর্থ', async () => {
   const ctx = new Ctx(await newDb());
-  const { gid, code } = await fourMembers(ctx);
+  const { gid } = await fourMembers(ctx);
+  const code = await ctx.rpc('rahim', 'create_member_invitation', gid, 'NEWBIE@x.test');
+  await ctx.fails(ctx.rpc('karim', 'join_group', code, 'করিম'), /অন্য ইমেইল/);
+  await ctx.fails(ctx.as('karim', 'select code from private.member_invitations'), /permission denied/);
+  await ctx.fails(ctx.as('karim', "select private.join_group('unused','নাম')"), /permission denied/);
   await ctx.user('newbie');
   await ctx.fails(ctx.rpc('newbie', 'join_group', 'WRONG123', 'নতুন'), /ঠিক নয়/);
   const j = await ctx.rpc('newbie', 'join_group', code.toLowerCase(), 'নতুন');

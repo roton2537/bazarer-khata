@@ -18,7 +18,7 @@ export function StoreProvider({ session, children }) {
   const seq = useRef(0);
 
   const loadMemberships = useCallback(async () => {
-    const rows = await q(supabase.from('members').select('*, groups(*)').eq('user_id', uid).order('created_at'));
+    const rows = await q(supabase.from('members').select('*, groups(id,name,currency_code,currency_symbol,currency_name,currency_gen,currency_decimals,created_at)').eq('user_id', uid).order('created_at'));
     // প্রতি গ্রুপে সর্বশেষ সদস্যপদ
     const byG = new Map();
     for (const r of rows) {

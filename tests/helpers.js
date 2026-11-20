@@ -19,6 +19,7 @@ export async function newDb() {
     grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;
   `);
   await db.exec(MIGRATION);
+  await db.exec(readFileSync(join(here, '../supabase/migrations/0002_admin_invitations.sql'), 'utf8'));
   return db;
 }
 
@@ -62,8 +63,8 @@ export async function fourMembers(ctx, today = '2026-11-01') {
   await ctx.setToday(today);
   for (const n of ['rahim', 'karim', 'abdul', 'salam']) await ctx.user(n);
   const gid = await ctx.rpc('rahim', 'create_group', 'বাসা', 'BDT', '৳', 'টাকা', 'টাকার', 2, 'রহিম');
-  const code = (await ctx.admin('select invite_code from groups where id=$1', [gid])).rows[0].invite_code;
   for (const [n, bn] of [['karim', 'করিম'], ['abdul', 'আব্দুল'], ['salam', 'সালাম']]) {
+    const code = await ctx.rpc('rahim', 'create_member_invitation', gid, n + '@x.test');
     await ctx.rpc(n, 'join_group', code, bn);
   }
   const mem = {};
@@ -71,5 +72,5 @@ export async function fourMembers(ctx, today = '2026-11-01') {
     const name = Object.keys(ctx.users).find((k) => ctx.users[k] === r.user_id);
     mem[name] = r.id;
   }
-  return { gid, code, mem };
+  return { gid, mem };
 }

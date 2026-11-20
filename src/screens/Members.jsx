@@ -14,21 +14,11 @@ export default function Members() {
   const [pauseSheet, setPauseSheet] = useState(false);
   const [transferSheet, setTransferSheet] = useState(null); // 'leave' | 'transfer'
   const today = todayDhaka();
-  const link = `${window.location.origin}/#/join/${g.invite_code}`;
   const pausedNow = (m) => s.data.pauses.some((p) => p.member_id === m.id && p.start_date <= today && (!p.end_date || today < p.end_date));
   const myPauses = s.data.pauses.filter((p) => p.member_id === s.me?.id && (!p.end_date || p.end_date > today));
   const others = s.data.members.filter((m) => !m.left_on && m.id !== s.me?.id && m.user_id);
   const pushOn = !!s.profile?.push_enabled;
 
-  const copy = async (t, msg) => { try { await navigator.clipboard.writeText(t); toast(msg); } catch { toast('কপি করা যায়নি। হাতে লিখে নিন: ' + t, true); } };
-  const share = async () => {
-    const text = `“${g.name}” গ্রুপে যোগ দিন (বাজারের খাতা):\n${link}\nকোড: ${g.invite_code}`;
-    if (navigator.share) { try { await navigator.share({ title: 'বাজারের খাতা', text }); } catch { /* বাতিল */ } } else copy(text, 'আমন্ত্রণ কপি হয়েছে।');
-  };
-  const regen = async () => {
-    const ok = await ask({ title: 'নতুন আমন্ত্রণ-কোড বানাবেন?', body: 'আগের লিংক ও কোড আর কাজ করবে না। যাঁরা আগেই যোগ দিয়েছেন তাঁদের কোনো পরিবর্তন হবে না।', confirmText: 'নতুন কোড বানান' });
-    if (ok) run(async () => { await rpc('regenerate_invite', { p_group: s.gid }); await s.refresh(); }, 'নতুন কোড তৈরি হয়েছে।');
-  };
   const togglePush = () => run(async () => {
     if (pushOn) await disablePush(); else await enablePush();
     await s.refresh();
@@ -69,17 +59,7 @@ export default function Members() {
         ))}
       </div>
 
-      {s.isActive ? (
-        <div className="card">
-          <h2>সদস্য যোগ করুন</h2>
-          <p className="small muted">নিচের লিংক ফোনে খুলে খাতার নাম দেখে সদস্য তাঁর যোগদান নিশ্চিত করবেন।</p>
-          <div className="banner green break" style={{ marginTop: 8 }}>{link}</div>
-          <div className="row between" style={{ marginTop: 8 }}><span className="muted">কোড</span><b style={{ fontSize: 22, letterSpacing: 2 }}>{g.invite_code}</b></div>
-          <div className="btn-row"><button className="btn small" onClick={share}>লিংক পাঠান</button><button className="btn small secondary" onClick={() => copy(link, 'লিংক কপি হয়েছে।')}>লিংক কপি</button>
-            <button className="btn small secondary" onClick={() => copy(g.invite_code, 'কোড কপি হয়েছে।')}>কোড কপি</button></div>
-          {s.isAdmin ? <div className="btn-row"><button className="btn small ghost" onClick={regen}>নতুন কোড বানান</button></div> : null}
-        </div>
-      ) : null}
+      {s.isAdmin && <AdminInvite key={s.gid} group={g} />}
 
       {s.isActive ? (
         <div className="card">
@@ -169,4 +149,39 @@ function TransferSheet({ mode, others, onClose }) {
       </form>
     </Sheet>
   );
+}
+
+function AdminInvite({ group }) {
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [busy, run] = useAction();
+  const link = code && window.location.origin + '/#/join/' + code;
+  function create(event) {
+    event.preventDefault();
+    run(async () => {
+      setCode(await rpc('create_member_invitation', { p_group: group.id, p_email: email.trim() }));
+    });
+  }
+  async function share() {
+    if (!navigator.share) return navigator.clipboard.writeText(link);
+    try { await navigator.share({ text: group.name + ' খাতায় যোগ দিন', url: link }); }
+    catch (error) { if (error.name !== 'AbortError') throw error; }
+  }
+  return <section className="card">
+    <h2>সদস্য যোগ করুন</h2>
+    <form className="stack" onSubmit={create}>
+      <Field label="সদস্যের ইমেইল"><input type="email" required disabled={busy} value={email}
+        onChange={event => { setEmail(event.target.value); setCode(''); }} /></Field>
+      <p className="small muted">এই ইমেইলের অ্যাকাউন্ট দিয়েই আমন্ত্রণ গ্রহণ করা যাবে। নতুন লিংক বানালে এই ইমেইলের আগের লিংক বাতিল হবে।</p>
+      <Btn type="submit" busy={busy}>আমন্ত্রণ লিংক তৈরি করুন</Btn>
+    </form>
+    {code && <div className="stack">
+      <div className="banner green break">{link}</div>
+      <div className="btn-row">
+        {navigator.share && <button className="btn small" onClick={() => run(share)}>আমন্ত্রণ পাঠান</button>}
+        <a className="btn small secondary" href={'mailto:' + encodeURIComponent(email.trim()) + '?subject=' + encodeURIComponent(group.name + ' খাতায় আমন্ত্রণ') + '&body=' + encodeURIComponent(link)}>ইমেইলে পাঠান</a>
+        <button className="btn small secondary" onClick={() => run(() => navigator.clipboard.writeText(link), 'লিংক কপি হয়েছে।')}>লিংক কপি</button>
+      </div>
+    </div>}
+  </section>;
 }

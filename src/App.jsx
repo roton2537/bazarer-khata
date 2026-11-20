@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { supabase, configured, rpc } from './lib/supabase.js';
-import { ToastProvider, Spinner, useToast } from './ui.jsx';
+import { supabase, configured } from './lib/supabase.js';
+import { ToastProvider, Spinner } from './ui.jsx';
 import { StoreProvider, useStore } from './store.jsx';
-import { AuthScreen, Onboarding } from './screens/Entry.jsx';
+import { AuthScreen, Onboarding, Welcome, Invite, Account, PasswordForm } from './screens/Entry.jsx';
 import Home from './screens/Home.jsx';
 import { PurchaseList, PurchaseForm } from './screens/Purchases.jsx';
 import Report from './screens/Report.jsx';
@@ -37,42 +37,42 @@ function Root() {
   const hash = useHash();
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session || null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s || null));
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => { if (event === 'PASSWORD_RECOVERY') go('#/recover'); setSession(s || null); });
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // আমন্ত্রণের লিংক: কোডটি রেখে দিই, সাইন ইন শেষে সরাসরি গ্রুপে যোগ দেওয়ার জন্য
-  const m = hash.match(/^#\/join\/([A-Za-z0-9]+)/);
-  if (m) localStorage.setItem('bk_join', m[1].toUpperCase());
+  const query = new URLSearchParams(window.location.search);
+  const invite = hash.match(/^#\/join\/([A-Za-z0-9]+)$/i)?.[1]?.toUpperCase();
+  const emailIntent = query.get('continue');
+  useEffect(() => {
+    if (session === undefined || !emailIntent) return;
+    const safe = /^(?:recover(?:\/create|\/join\/[A-Za-z0-9]+)?|create|join\/[A-Za-z0-9]+)$/.test(emailIntent);
+    query.delete('continue');
+    const url = new URL(window.location.href);
+    url.search = query.toString();
+    url.hash = safe ? '#/' + emailIntent : '#/';
+    window.history.replaceState(null, '', url);
+    window.dispatchEvent(new Event('hashchange'));
+  }, [emailIntent, session]);
 
-  if (session === undefined) return <div className="app no-nav center" style={{ paddingTop: 80 }}><Spinner /></div>;
-  if (!session) return <AuthScreen />;
-  return <StoreProvider session={session}><Authed hash={hash} /></StoreProvider>;
+  if (session === undefined) return <div className="app no-nav center"><Spinner /></div>;
+  if (emailIntent) return <Spinner />;
+  if (!session) {
+    if (hash.startsWith('#/recover')) return <AuthScreen key="recover" initialMode="forgot" />;
+    if (invite || ['#/create', '#/signin'].includes(hash)) return <AuthScreen key={hash} invite={invite} create={hash === '#/create'} />;
+    return <Welcome key={hash} signedIn={false} />;
+  }
+  if (/^#\/recover(?:$|\/)/.test(hash)) return <PasswordForm next={hash.replace(/^#\/recover\/?/, '#/')} />;
+  return <StoreProvider key={session.user.id} session={session}><Authed hash={hash} invite={invite} /></StoreProvider>;
 }
 
-function Authed({ hash }) {
+function Authed({ hash, invite }) {
   const s = useStore();
-  const toast = useToast();
-  const [joining, setJoining] = useState(false);
-  const pending = localStorage.getItem('bk_join');
-
-  // সাইন ইন করা থাকলে এবং আমন্ত্রণ-কোড থাকলে স্বয়ংক্রিয়ভাবে যোগ দাও
-  useEffect(() => {
-    if (!pending || !s.memberships || joining) return;
-    setJoining(true);
-    (async () => {
-      try {
-        const g = await rpc('join_group', { p_code: pending, p_my_name: s.profile?.name || '' });
-        localStorage.removeItem('bk_join');
-        s.setGid(g); await s.refresh();
-        toast('গ্রুপে যোগ দিয়েছেন।'); go('#/');
-      } catch (e) { localStorage.removeItem('bk_join'); toast(e.message, true); go('#/'); }
-      finally { setJoining(false); }
-    })();
-  }, [pending, s.memberships]); // eslint-disable-line
-
-  if (!s.memberships || joining || pending) return <div className="app no-nav center" style={{ paddingTop: 80 }}><Spinner /><p className="muted">গ্রুপে যুক্ত করা হচ্ছে…</p></div>;
-  if (s.memberships.length === 0 || hash === '#/new-group') return <Onboarding />;
+  if (hash === '#/account') return <Account />;
+  if (!s.memberships) return <div className="app no-nav center"><Spinner /></div>;
+  if (invite) return <Invite key={invite} code={invite} />;
+  if (hash === '#/create') return <Onboarding />;
+  if (!s.memberships.length || hash === '#/new-group') return <Welcome signedIn />;
   if (!s.group || !s.data) return <Skeleton />;
 
   const r = hash.replace(/^#/, '') || '/';

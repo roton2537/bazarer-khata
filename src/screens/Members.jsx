@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase, rpc } from '../lib/supabase.js';
+import { rpc } from '../lib/supabase.js';
 import { useStore } from '../store.jsx';
 import { Btn, Field, Sheet, Tag, useAction, useConfirm, useToast } from '../ui.jsx';
 import { dateLabel, dayLabel, todayDhaka, monthOf, toBnDigits } from '../lib/format.js';
@@ -52,12 +52,6 @@ export default function Members() {
       confirmText: 'চিরতরে মুছুন', danger: true, requireText: g.name });
     if (ok) run(async () => { await rpc('delete_group', { p_group: s.gid }); localStorage.removeItem('bk_gid'); await s.refresh(); go('#/'); }, 'গ্রুপ মুছে ফেলা হয়েছে।');
   };
-  const delAccount = async () => {
-    const ok = await ask({ title: 'আপনার অ্যাকাউন্ট মুছবেন?',
-      body: 'আপনার লগইন, ইমেইল ও নাম-পরিচয়ের সংযোগ মুছে যাবে। আপনি সব গ্রুপ থেকে বেরিয়ে যাবেন।\nগ্রুপের অন্যদের পুরোনো মাসের হিসাব ঠিক থাকবে; আপনার আগের বাজার ও দেনা-পাওনা আপনার নামেই ইতিহাসে দেখাবে।\nযে গ্রুপে আপনিই একমাত্র সদস্য, সেই গ্রুপটিও মুছে যাবে। আপনি যদি কোনো গ্রুপের একমাত্র অ্যাডমিন হন, আগে অন্য সদস্যকে দায়িত্ব দিতে হবে।\nএটি ফেরানো যাবে না।',
-      confirmText: 'অ্যাকাউন্ট মুছুন', danger: true, requireText: 'মুছুন' });
-    if (ok) run(async () => { await rpc('delete_my_account'); localStorage.clear(); await supabase.auth.signOut(); }, 'অ্যাকাউন্ট মুছে ফেলা হয়েছে।');
-  };
 
   return (
     <>
@@ -78,7 +72,7 @@ export default function Members() {
       {s.isActive ? (
         <div className="card">
           <h2>সদস্য যোগ করুন</h2>
-          <p className="small muted">নিচের লিংক ফোনে খুলে সাইন ইন করলেই নতুন সদস্য সরাসরি এই গ্রুপে যোগ দেবেন।</p>
+          <p className="small muted">নিচের লিংক ফোনে খুলে খাতার নাম দেখে সদস্য তাঁর যোগদান নিশ্চিত করবেন।</p>
           <div className="banner green break" style={{ marginTop: 8 }}>{link}</div>
           <div className="row between" style={{ marginTop: 8 }}><span className="muted">কোড</span><b style={{ fontSize: 22, letterSpacing: 2 }}>{g.invite_code}</b></div>
           <div className="btn-row"><button className="btn small" onClick={share}>লিংক পাঠান</button><button className="btn small secondary" onClick={() => copy(link, 'লিংক কপি হয়েছে।')}>লিংক কপি</button>
@@ -109,15 +103,14 @@ export default function Members() {
       </div>
 
       <div className="card">
-        <h2>অ্যাকাউন্ট ও গ্রুপ</h2>
+        <h2>খাতার সেটিংস</h2>
         <p className="small muted">সাইন ইন করা আছে: {s.session.user.email}</p>
         <div className="stack" style={{ marginTop: 8 }}>
           {s.isAdmin && others.length > 0 ? <button className="btn secondary" onClick={() => setTransferSheet('transfer')}>অ্যাডমিনের দায়িত্ব অন্যকে দিন</button> : null}
           {s.isActive ? <Btn busy={busy} className="danger secondary" onClick={leave}>এই গ্রুপ ছেড়ে যান</Btn> : null}
           {s.isAdmin ? <Btn busy={busy} className="danger secondary" onClick={delGroup}>পুরো গ্রুপ মুছে ফেলুন</Btn> : null}
           <button className="btn secondary" onClick={() => go('#/new-group')}>+ আরেকটি গ্রুপ খুলুন বা যোগ দিন</button>
-          <button className="btn secondary" onClick={() => supabase.auth.signOut()}>সাইন আউট</button>
-          <Btn busy={busy} className="danger" onClick={delAccount}>আমার অ্যাকাউন্ট মুছে ফেলুন</Btn>
+          <button className="btn secondary" onClick={() => go('#/account')}>আমার অ্যাকাউন্ট</button>
         </div>
       </div>
 

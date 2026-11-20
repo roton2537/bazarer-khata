@@ -3,7 +3,8 @@ import { supabase, rpc, errText } from '../lib/supabase.js';
 import { Btn, Field, useAction, useConfirm } from '../ui.jsx';
 import { CURRENCIES } from '../lib/format.js';
 import { useStore } from '../store.jsx';
-import { deviceSession, openLedger } from './PhoneAccess.jsx';
+import { openLedger } from './PhoneAccess.jsx';
+import './welcome.css';
 import { go } from '../App.jsx';
 
 function Brand() {
@@ -23,11 +24,28 @@ function emailReturn(intent) {
 }
 
 export function Welcome({ signedIn }) {
-  return <main className="app no-nav"><Brand /><section className="card stack">
-    <a className="btn" href="#/create">নতুন খাতা তৈরি করুন</a>
-    <a className="btn secondary" href={signedIn && location.hash === '#/new-group' ? '#/' : '#/open'}>আমার খাতা খুলুন</a>
-    <p className="small muted">সদস্য হিসেবে যোগ দিতে অ্যাডমিনের পাঠানো লিংক খুলুন।</p>
-  </section></main>;
+  return <main className="kh-welcome">
+    <header><img src="/icon.svg" alt="" width="32" height="32" />বাজারের খাতা</header>
+    <div className="kh-layout">
+      <div className="kh-art" role="img" aria-label="নমুনা খাতা। চাল ১২০ টাকা ও ডাল ৬০ টাকা, মোট ১৮০ টাকা।">
+        <div className="kh-cover" aria-hidden="true"></div>
+        <div className="kh-slip" aria-hidden="true">
+          <span className="kh-date">নমুনা হিসাব</span><strong>বাজারের ফর্দ</strong>
+          <div><span>চাল</span><b>৳ ১২০</b></div><div><span>ডাল</span><b>৳ ৬০</b></div>
+          <div className="kh-sum"><span>মোট</span><b>৳ ১৮০</b></div>
+        </div>
+      </div>
+      <section className="kh-intro">
+        <h1>সবার বাজার,<br/><em>এক খাতায়।</em></h1>
+        <p>কে কত টাকার বাজার করলেন, আর কার ভাগে কত পড়ল—একসঙ্গে হিসাব রাখুন।</p>
+        <nav aria-label="খাতা খুলুন">
+          <a className="kh-create" href="#/create">নতুন খাতা তৈরি করুন <span aria-hidden="true">→</span></a>
+          <a href={signedIn && location.hash === '#/new-group' ? '#/' : '#/open'}>আমার খাতা খুলুন</a>
+        </nav>
+        <aside>সদস্য হিসেবে যোগ দিতে অ্যাডমিনের পাঠানো লিংক খুলুন।</aside>
+      </section>
+    </div>
+  </main>;
 }
 
 function useInviteName(code) {
@@ -76,10 +94,11 @@ export function AuthScreen({ invite, create, initialMode }) {
   };
 
   return (
-    <div className="app no-nav">
-      <Brand />
+    <main className={create ? 'kh-welcome kh-new kh-admin' : 'app no-nav'}>
+      {create ? <header><img src="/icon.svg" alt="" width="32" height="32" />বাজারের খাতা<a href="#/">← ফিরে যান</a></header> : <Brand />}
+      <div className={create ? 'kh-new-body' : undefined}>
       {invite && <div className="banner green">{group.name ? 'আমন্ত্রণ · ' + group.name : group.error || 'আমন্ত্রণ দেখা হচ্ছে…'}</div>}
-      {create && <h2>নতুন খাতা খুলুন</h2>}
+      {create && <><h1>আপনার অ্যাকাউন্ট</h1><p className="kh-admin-intro">নতুন খাতা খুলতে অ্যাকাউন্ট তৈরি করুন অথবা আপনার অ্যাকাউন্টে সাইন ইন করুন।</p></>}
       {mode === 'verify' ? <section className="card stack"><h2>ইমেইল চেক করুন</h2><strong>{email}</strong><p role="status">{info}</p>
         <Btn busy={busy} onClick={() => run(async () => {
           const {error} = await supabase.auth.resend({type: 'signup', email: email.trim(), options: {emailRedirectTo: emailReturn(intent)}});
@@ -91,51 +110,54 @@ export function AuthScreen({ invite, create, initialMode }) {
           <button type="button" className={mode === 'in' ? 'on' : ''} onClick={() => switchMode('in')}>সাইন ইন</button>
           <button type="button" className={mode === 'up' ? 'on' : ''} onClick={() => switchMode('up')}>নতুন অ্যাকাউন্ট</button>
         </div>}
-        {mode === 'up' ? <Field label="আপনার নাম"><input type="text" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field> : null}
+        {mode === 'up' ? <Field label="আপনার নাম"><input type="text" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required /></Field> : null}
         <Field label="ইমেইল"><input type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required /></Field>
         {mode !== 'forgot' && <Field label="পাসওয়ার্ড" hint={mode === 'up' ? 'অন্তত ৬ অক্ষর' : undefined}>
           <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete={mode === 'up' ? 'new-password' : 'current-password'} required minLength={6} />
         </Field>}
         {info ? <div className="banner green">{info}</div> : null}
-        <div style={{ marginTop: 16 }}><Btn busy={busy} type="submit">{mode === 'up' ? 'অ্যাকাউন্ট খুলুন' : mode === 'forgot' ? 'লিংক পাঠান' : 'সাইন ইন'}</Btn></div>
+        <div style={{ marginTop: 16 }}><Btn busy={busy} type="submit">{mode === 'up' ? (create ? 'অ্যাকাউন্ট তৈরি করুন' : 'অ্যাকাউন্ট খুলুন') : mode === 'forgot' ? 'লিংক পাঠান' : 'সাইন ইন'}</Btn></div>
         {mode === 'in' && <button className="btn ghost" type="button" onClick={() => switchMode('forgot')}>পাসওয়ার্ড ভুলে গেছেন?</button>}
         {mode === 'forgot' && <button className="btn ghost" type="button" onClick={() => switchMode('in')}>সাইন ইনে ফিরুন</button>}
       </form>}
-      <a href="#/">শুরুতে ফিরুন</a>
-    </div>
+      {!create && <a href="#/">শুরুতে ফিরুন</a>}
+      </div>
+    </main>
   );
 }
 
-export function Onboarding() {
+export function Onboarding({user}) {
   const [name, setName] = useState(''); const [cur, setCur] = useState('BDT');
-  const [myName, setMyName] = useState('');
+  const [myName, setMyName] = useState(user.user_metadata?.name || '');
   const [busy, run] = useAction();
 
   const create = (e) => {
     e.preventDefault();
     run(async () => {
       const c = CURRENCIES.find((x) => x.code === cur);
-      await deviceSession();
       const id = await rpc('create_group', { p_name: name, p_currency_code: c.code, p_symbol: c.symbol, p_cname: c.name, p_cgen: c.gen, p_decimals: c.decimals, p_my_name: myName });
       openLedger(id, '/members');
     });
   };
-  return (
-    <div className="app no-nav">
-      <Brand />
-      <div className="card">
-        <h2>নতুন খাতা খুলুন</h2>
-          <form onSubmit={create}>
-            <Field label="গ্রুপের নাম"><input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="যেমন: মেসের বাজার" required maxLength={60} /></Field>
-            <Field label="মুদ্রা"><select value={cur} onChange={(e) => setCur(e.target.value)}>{CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.name} ({c.symbol})</option>)}</select></Field>
-            <Field label="গ্রুপে আপনার নাম"><input type="text" value={myName} onChange={(e) => setMyName(e.target.value)} required /></Field>
-            <p className="small muted">গ্রুপ তৈরি করলে আপনি অ্যাডমিন হবেন। পরে আমন্ত্রণের লিংক পাঠিয়ে সবাইকে যোগ করতে পারবেন।</p>
-            <div style={{ marginTop: 12 }}><Btn busy={busy} type="submit">গ্রুপ তৈরি করুন</Btn></div>
-          </form>
+  return <main className="kh-welcome kh-new">
+    <header><img src="/icon.svg" alt="" width="32" height="32" />বাজারের খাতা
+      <a href="#/">← ফিরে যান</a>
+    </header>
+    <div className="kh-new-body">
+      <h1>নতুন খাতা তৈরি করুন</h1>
+      <div className="kh-book" aria-hidden="true">
+        <span className="kh-book-title">{name.trim() || 'আপনার বাজারের খাতা'}</span>
+        <span className="kh-book-by">{myName.trim() || 'অ্যাডমিন'} · {cur}</span>
       </div>
-      <a href="#/">ফিরে যান</a>
+      <form onSubmit={create}>
+        <Field label="খাতার নাম"><input required pattern={'.*\\S.*'} maxLength={60} placeholder="যেমন: রিয়াদের বাজার" value={name} onChange={e => setName(e.target.value)} /></Field>
+        <Field label="আপনার নাম"><input required pattern={'.*\\S.*'} autoComplete="name" placeholder="যে নামে সদস্যরা আপনাকে চিনবেন" value={myName} onChange={e => setMyName(e.target.value)} /></Field>
+        <Field label="হিসাবের মুদ্রা"><select value={cur} onChange={e => setCur(e.target.value)}>{CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}</select></Field>
+        <p>আপনি এই খাতার অ্যাডমিন হবেন। খাতা তৈরির পর সদস্যদের আমন্ত্রণ জানাতে পারবেন।</p>
+        <Btn busy={busy} type="submit">খাতা তৈরি করুন <span aria-hidden="true">→</span></Btn>
+      </form>
     </div>
-  );
+  </main>;
 }
 
 

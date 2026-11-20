@@ -61,7 +61,10 @@ function Root() {
   const token = hash.match(/^#\/access\/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/i)?.[1];
   if (token) return <AcceptLink key={token} token={token} />;
   if (hash === '#/open') return <OpenLedger signedIn={!!session} />;
-  if (hash === '#/create') return <Onboarding />;
+  if (hash === '#/create') {
+    if (!session?.user.email || session.user.is_anonymous) return <AuthScreen key="admin" create />;
+    return <Onboarding user={session.user} />;
+  }
   if (!session) {
     if (hash.startsWith('#/recover')) return <AuthScreen key="recover" initialMode="forgot" />;
     if (invite || ['#/create', '#/signin'].includes(hash)) return <AuthScreen key={hash} invite={invite} create={hash === '#/create'} />;

@@ -98,7 +98,7 @@ export function AuthScreen({ invite, create, initialMode }) {
       {create ? <header><img src="/icon.svg" alt="" width="32" height="32" />বাজারের খাতা<a href="#/">← ফিরে যান</a></header> : <Brand />}
       <div className={create ? 'kh-new-body' : undefined}>
       {invite && <div className="banner green">{group.name ? 'আমন্ত্রণ · ' + group.name : group.error || 'আমন্ত্রণ দেখা হচ্ছে…'}</div>}
-      {create && <><h1>অ্যাডমিন অ্যাকাউন্ট</h1><p className="kh-admin-intro">নতুন খাতা খুলতে অ্যাকাউন্ট তৈরি করুন অথবা আপনার অ্যাকাউন্টে সাইন ইন করুন।</p></>}
+      {create && <><h1>আপনার অ্যাকাউন্ট</h1><p className="kh-admin-intro">নতুন খাতা খুলতে অ্যাকাউন্ট তৈরি করুন অথবা আপনার অ্যাকাউন্টে সাইন ইন করুন।</p></>}
       {mode === 'verify' ? <section className="card stack"><h2>ইমেইল চেক করুন</h2><strong>{email}</strong><p role="status">{info}</p>
         <Btn busy={busy} onClick={() => run(async () => {
           const {error} = await supabase.auth.resend({type: 'signup', email: email.trim(), options: {emailRedirectTo: emailReturn(intent)}});
@@ -116,7 +116,7 @@ export function AuthScreen({ invite, create, initialMode }) {
           <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete={mode === 'up' ? 'new-password' : 'current-password'} required minLength={6} />
         </Field>}
         {info ? <div className="banner green">{info}</div> : null}
-        <div style={{ marginTop: 16 }}><Btn busy={busy} type="submit">{mode === 'up' ? (create ? 'অ্যাডমিন অ্যাকাউন্ট তৈরি করুন' : 'অ্যাকাউন্ট খুলুন') : mode === 'forgot' ? 'লিংক পাঠান' : 'সাইন ইন'}</Btn></div>
+        <div style={{ marginTop: 16 }}><Btn busy={busy} type="submit">{mode === 'up' ? (create ? 'অ্যাকাউন্ট তৈরি করুন' : 'অ্যাকাউন্ট খুলুন') : mode === 'forgot' ? 'লিংক পাঠান' : 'সাইন ইন'}</Btn></div>
         {mode === 'in' && <button className="btn ghost" type="button" onClick={() => switchMode('forgot')}>পাসওয়ার্ড ভুলে গেছেন?</button>}
         {mode === 'forgot' && <button className="btn ghost" type="button" onClick={() => switchMode('in')}>সাইন ইনে ফিরুন</button>}
       </form>}

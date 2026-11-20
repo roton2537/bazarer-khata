@@ -4,6 +4,7 @@ import { Btn, Field, useAction, useConfirm } from '../ui.jsx';
 import { CURRENCIES } from '../lib/format.js';
 import { useStore } from '../store.jsx';
 import { deviceSession, openLedger } from './PhoneAccess.jsx';
+import './welcome.css';
 import { go } from '../App.jsx';
 
 function Brand() {
@@ -23,11 +24,28 @@ function emailReturn(intent) {
 }
 
 export function Welcome({ signedIn }) {
-  return <main className="app no-nav"><Brand /><section className="card stack">
-    <a className="btn" href="#/create">নতুন খাতা তৈরি করুন</a>
-    <a className="btn secondary" href={signedIn && location.hash === '#/new-group' ? '#/' : '#/open'}>আমার খাতা খুলুন</a>
-    <p className="small muted">সদস্য হিসেবে যোগ দিতে অ্যাডমিনের পাঠানো লিংক খুলুন।</p>
-  </section></main>;
+  return <main className="kh-welcome">
+    <header><img src="/icon.svg" alt="" width="32" height="32" />বাজারের খাতা</header>
+    <div className="kh-layout">
+      <div className="kh-art" role="img" aria-label="নমুনা খাতা। চাল ১২০ টাকা ও ডাল ৬০ টাকা, মোট ১৮০ টাকা।">
+        <div className="kh-cover" aria-hidden="true"></div>
+        <div className="kh-slip" aria-hidden="true">
+          <span className="kh-date">নমুনা হিসাব</span><strong>বাজারের ফর্দ</strong>
+          <div><span>চাল</span><b>৳ ১২০</b></div><div><span>ডাল</span><b>৳ ৬০</b></div>
+          <div className="kh-sum"><span>মোট</span><b>৳ ১৮০</b></div>
+        </div>
+      </div>
+      <section className="kh-intro">
+        <h1>সবার বাজার,<br/><em>এক খাতায়।</em></h1>
+        <p>কে কত টাকার বাজার করলেন, আর কার ভাগে কত পড়ল—একসঙ্গে হিসাব রাখুন।</p>
+        <nav aria-label="খাতা খুলুন">
+          <a className="kh-create" href="#/create">নতুন খাতা তৈরি করুন <span aria-hidden="true">→</span></a>
+          <a href={signedIn && location.hash === '#/new-group' ? '#/' : '#/open'}>আমার খাতা খুলুন</a>
+        </nav>
+        <aside>সদস্য হিসেবে যোগ দিতে অ্যাডমিনের পাঠানো লিংক খুলুন।</aside>
+      </section>
+    </div>
+  </main>;
 }
 
 function useInviteName(code) {

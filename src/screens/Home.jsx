@@ -27,6 +27,13 @@ export default function Home() {
         </div>
       </div>
 
+      <div className="home-actions" aria-label="খাতার কাজ">
+        {s.isActive && <a className="btn" href="#/add">+ বাজার লিখুন</a>}
+        <a className="btn secondary" href="#/report">মাসিক হিসাব</a>
+      </div>
+      {s.isAdmin && s.data.members.filter(member => !member.left_on).length === 1 &&
+        <div className="card stack"><h2>সদস্য আমন্ত্রণ করুন</h2><p>সদস্যের নামে একটি লিংক তৈরি করে পাঠান। তিনি ইমেইল ছাড়াই যোগ দিতে পারবেন।</p><a href="#/members">আমন্ত্রণ লিংক তৈরি করুন →</a></div>}
+
       {incoming.map((p) => (
         <div className="banner" key={p.id}>
           <b>{p.from_name}</b> আপনাকে <b>{fmtMoney(p.amount, g)}</b> দিয়েছেন বলে জানিয়েছেন। টাকা পেয়ে থাকলে নিশ্চিত করুন।
@@ -39,7 +46,7 @@ export default function Home() {
         <div className="row between"><h2>সাম্প্রতিক বাজার</h2>{recent.length ? <a href="#/list" className="small">সব দেখুন</a> : null}</div>
         <div className="card">
           {recent.length === 0 ? (
-            <Empty title="এ মাসে এখনও কোনো বাজার নেই">{s.isActive ? <p className="small">নিচের বাটনে চেপে প্রথম বাজারটি লিখুন।</p> : null}</Empty>
+            <Empty title="এ মাসে এখনও কোনো বাজার নেই">{s.isActive ? <p className="small">“বাজার লিখুন” থেকে প্রথম খরচটি যোগ করুন।</p> : null}</Empty>
           ) : recent.map((p) => (
             <div className="item row" key={p.id}>
               <Avatar name={nameOf(p.buyer_id)} id={p.buyer_id} />
@@ -49,7 +56,6 @@ export default function Home() {
           ))}
         </div>
       </div>
-      {s.isActive ? <div className="cta-bar"><button className="btn" onClick={() => go('#/add')}>+ বাজার যোগ করুন</button></div> : null}
     </>
   );
 }

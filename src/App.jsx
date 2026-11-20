@@ -60,7 +60,8 @@ function Root() {
   if (emailIntent) return <Spinner />;
   const token = hash.match(/^#\/access\/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/i)?.[1];
   if (token) return <AcceptLink key={token} token={token} />;
-  if (hash === '#/open') return <OpenLedger signedIn={!!session} />;
+  if (hash === '#/restore') return <OpenLedger signedIn={!!session} />;
+  if (hash === '#/open' && !session) return <AuthScreen key="open" returning />;
   if (hash === '#/create') {
     if (!session?.user.email || session.user.is_anonymous) return <AuthScreen key="admin" create />;
     return <Onboarding user={session.user} />;
@@ -77,12 +78,13 @@ function Root() {
 function Authed({ hash, invite }) {
   const s = useStore();
   if (hash === '#/account') return <Account />;
+  if (s.error && (!s.memberships || !s.data)) return <main className="app no-nav"><section className="card stack" role="alert"><h1>খাতা লোড করা যায়নি</h1><p>{s.error}</p><button className="btn" disabled={s.loading} onClick={() => s.refresh().catch(() => {})}>আবার চেষ্টা করুন</button><a href="#/account">আমার অ্যাকাউন্ট</a></section></main>;
   if (!s.memberships) return <div className="app no-nav center"><Spinner /></div>;
   if (invite) return <Invite key={invite} code={invite} />;
   if (!s.memberships.length || hash === '#/new-group') return <Welcome signedIn />;
   if (!s.group || !s.data) return <Skeleton />;
 
-  const r = hash.replace(/^#/, '') || '/';
+  const r = hash === '#/open' || hash === '#/signin' ? '/' : hash.replace(/^#/, '') || '/';
   if (r === '/add') return <PurchaseForm />;
   if (r.startsWith('/edit/')) return <PurchaseForm editId={r.split('/')[2]} />;
 

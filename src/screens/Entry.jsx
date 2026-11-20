@@ -64,7 +64,7 @@ function useInviteName(code) {
   return {...result, retry: () => retry(n => n + 1)};
 }
 
-export function AuthScreen({ invite, create, initialMode }) {
+export function AuthScreen({ invite, create, returning, initialMode }) {
   const [mode, setMode] = useState(initialMode || (create ? 'up' : 'in'));
   const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [pw, setPw] = useState('');
   const [info, setInfo] = useState('');
@@ -94,10 +94,11 @@ export function AuthScreen({ invite, create, initialMode }) {
   };
 
   return (
-    <main className={create ? 'kh-welcome kh-new kh-admin' : 'app no-nav'}>
-      {create ? <header><img src="/icon.svg" alt="" width="32" height="32" />বাজারের খাতা<a href="#/">← ফিরে যান</a></header> : <Brand />}
-      <div className={create ? 'kh-new-body' : undefined}>
+    <main className={(create || returning) ? 'kh-welcome kh-new kh-admin' : 'app no-nav'}>
+      {(create || returning) ? <header><img src="/icon.svg" alt="" width="32" height="32" />বাজারের খাতা<a href="#/">← ফিরে যান</a></header> : <Brand />}
+      <div className={(create || returning) ? 'kh-new-body' : undefined}>
       {invite && <div className="banner green">{group.name ? 'আমন্ত্রণ · ' + group.name : group.error || 'আমন্ত্রণ দেখা হচ্ছে…'}</div>}
+      {returning && <><h1>আমার খাতা খুলুন</h1><p className="kh-admin-intro">আগের খাতায় ফিরতে আপনার ইমেইল ও পাসওয়ার্ড দিন।</p></>}
       {create && <><h1>আপনার অ্যাকাউন্ট</h1><p className="kh-admin-intro">নতুন খাতা খুলতে অ্যাকাউন্ট তৈরি করুন অথবা আপনার অ্যাকাউন্টে সাইন ইন করুন।</p></>}
       {mode === 'verify' ? <section className="card stack"><h2>ইমেইল চেক করুন</h2><strong>{email}</strong><p role="status">{info}</p>
         <Btn busy={busy} onClick={() => run(async () => {
@@ -106,7 +107,7 @@ export function AuthScreen({ invite, create, initialMode }) {
           setInfo('নিশ্চিতকরণ ইমেইল আবার পাঠানো হয়েছে।');
         })}>আবার পাঠান</Btn><button className="btn secondary" onClick={() => switchMode('in')}>সাইন ইন করুন</button>
       </section> : <form className="card" style={{ marginTop: 16 }} onSubmit={submit}>
-        {mode === 'forgot' ? <h2>পাসওয়ার্ড পুনরুদ্ধার</h2> : <div className="seg">
+        {mode === 'forgot' ? <h2>পাসওয়ার্ড পুনরুদ্ধার</h2> : returning ? null : <div className="seg">
           <button type="button" className={mode === 'in' ? 'on' : ''} onClick={() => switchMode('in')}>সাইন ইন</button>
           <button type="button" className={mode === 'up' ? 'on' : ''} onClick={() => switchMode('up')}>নতুন অ্যাকাউন্ট</button>
         </div>}
@@ -120,7 +121,8 @@ export function AuthScreen({ invite, create, initialMode }) {
         {mode === 'in' && <button className="btn ghost" type="button" onClick={() => switchMode('forgot')}>পাসওয়ার্ড ভুলে গেছেন?</button>}
         {mode === 'forgot' && <button className="btn ghost" type="button" onClick={() => switchMode('in')}>সাইন ইনে ফিরুন</button>}
       </form>}
-      {!create && <a href="#/">শুরুতে ফিরুন</a>}
+      {returning && <div className="return-help"><a href="#/restore">রিকভারি কোড দিয়ে খাতা খুলুন</a><p>আমন্ত্রিত সদস্য হলে নতুন ফোনে অ্যাডমিনের পাঠানো প্রবেশের লিংক খুলুন।</p></div>}
+      {!returning && !create && <a href="#/">শুরুতে ফিরুন</a>}
       </div>
     </main>
   );

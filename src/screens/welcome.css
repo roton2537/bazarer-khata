@@ -8,7 +8,7 @@
 .kh-slip { padding:15px 19px; transform:translate(9px,-1px) rotate(7deg); background:#fffae9; color:#324a3d; box-shadow:0 5px 8px #0c251e30; border-radius:3px; }
 .kh-slip::before { content:''; position:absolute; width:48px; height:14px; background:#e1c991ce; left:calc(50% - 24px); top:-6px; transform:rotate(-6deg); }
 .kh-date { color:#75654e; font-size:10px; }
-.kh-slip strong { display:block; margin:0 0 5px; font:700 23px/1.5 'Noto Serif Bengali',serif; }
+.kh-slip strong { display:block; margin:0 0 5px; white-space:nowrap; font:700 18px/1.55 'Noto Serif Bengali',serif; }
 .kh-slip div { display:flex; justify-content:space-between; align-items:center; border-top:1px solid #dfd8bd; font-size:14px; line-height:1.85; }
 .kh-slip b { font-weight:500; }
 .kh-slip .kh-sum { border-top:1px dashed #8e987f; font-weight:700; }

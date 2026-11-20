@@ -47,3 +47,11 @@
 .kh-new form p { margin:1px 0 0; font-size:14px; line-height:1.65; color:#516255; }
 .kh-new .btn { min-height:50px; background:#174e3c; color:white; border-radius:10px; }
 .kh-new .btn span { margin-left:7px; }
+
+.kh-admin-intro { color:#516255; margin:10px 0 20px; }
+.kh-admin .card { background:#fffef8; border:1px solid #d9dfd1; border-radius:16px; padding:20px; }
+.kh-admin .seg { display:flex; background:#ecefe7; border-radius:9px; padding:4px; gap:4px; }
+.kh-admin .seg button { flex:1; min-height:42px; border:0; border-radius:7px; color:#44614e; background:transparent; }
+.kh-admin .seg button.on { background:#1b513e; color:#fff; }
+.kh-admin .seg button:last-child { order:-1; }
+.kh-admin .btn.ghost,.kh-admin .btn.secondary { background:transparent; color:#204e39; }

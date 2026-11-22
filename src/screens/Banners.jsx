@@ -7,10 +7,11 @@ import { todayDhaka, monthOf, addMonths, monthLabel } from '../lib/format.js';
 // অফলাইনে লেখা বাজার/পরিশোধ: কতগুলো অপেক্ষায় আছে, আর সার্ভার কোনগুলো ফিরিয়েছে
 export function OfflineBanner() {
   const s = useStore();
-  const [st, setSt] = useState(queueState());
+  const [st, setSt] = useState(() => queueState(s.uid));
+  const [syncError, setSyncError] = useState('');
   const [busy, setBusy] = useState(false);
-  const refresh = () => setSt(queueState());
-  const flush = async () => { setBusy(true); try { const n = await flushQueue(); if (n) await s.reloadGroup(); } finally { setBusy(false); refresh(); } };
+  const refresh = () => setSt(queueState(s.uid));
+  const flush = async () => { setBusy(true); setSyncError(''); try { const n = await flushQueue(s.uid); if (n) await s.reloadGroup(); } catch(e) { setSyncError(e.message); } finally { setBusy(false); refresh(); } };
   useEffect(() => {
     window.addEventListener('bk-queue', refresh);
     const online = () => flush();
@@ -18,9 +19,11 @@ export function OfflineBanner() {
     if (navigator.onLine) flush();
     return () => { window.removeEventListener('bk-queue', refresh); window.removeEventListener('online', online); };
   }, []);
-  if (!st.pending.length && !st.failed.length) return null;
+  if (!st.pending.length && !st.failed.length && !st.legacy.length && !syncError) return null;
   return (
     <div className="queue-wrap" role="status">
+      {syncError ? <div className="banner red">{syncError}</div> : null}
+      {st.legacy.length > 0 ? <div className="banner red"><b>পুরোনো অফলাইন লেখা: {st.legacy.length}টি</b><p>অ্যাকাউন্ট যাচাই ছাড়া পুরোনো লেখা আর স্বয়ংক্রিয়ভাবে পাঠানো হবে না। এই ডিভাইসের পুরোনো খাতায় যাচাই করে প্রয়োজনে আবার লিখুন। পুরোনো সংরক্ষিত তথ্য মুছে ফেলা হয়নি।</p></div> : null}
       {st.pending.length > 0 && <div className="banner">
         <b>{st.pending.length}টি লেখা</b> এই ফোনে রাখা আছে, ইন্টারনেট এলে নিজে থেকে জমা হবে।
         <div className="btn-row"><Btn busy={busy} className="small secondary" onClick={flush}>এখনই চেষ্টা করুন</Btn></div>
@@ -28,7 +31,7 @@ export function OfflineBanner() {
       {st.failed.length > 0 && <div className="banner">
         <b>জমা হয়নি:</b>
         {st.failed.map((f, i) => <div key={i} className="small">{f.desc ? `“${f.desc}” — ` : ''}{f.reason}</div>)}
-        <div className="btn-row"><button className="btn small secondary" onClick={dismissFailed}>বুঝেছি</button></div>
+        <div className="btn-row"><button className="btn small secondary" onClick={() => dismissFailed(s.uid)}>বুঝেছি</button></div>
       </div>}
     </div>
   );

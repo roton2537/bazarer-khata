@@ -12,6 +12,7 @@ const KIND = { add: 'নতুন বাজার যোগ', edit: 'বাজ�
 export default function Report() {
   const s = useStore(); const g = s.group; const rep = s.data.report; const toast = useToast();
   const finalized = rep.status === 'finalized';
+  const outstanding = (rep.settlements || []).reduce((sum, settlement) => sum + settlement.amount, 0);
   const today = todayDhaka();
   const monthEnded = today >= addMonths(s.month, 1);
   const canPay = !finalized && s.month <= monthOf(today) && !!s.me;
@@ -64,9 +65,10 @@ export default function Report() {
   return (
     <>
       <Header title="মাসিক রিপোর্ট" />
-      <div className="card" style={{ marginTop: 12 }}>
+      <div className="card khai-report-summary" style={{ marginTop: 12 }}>
         <div className="row between"><h2 className="break">{printName}</h2></div>
         <div className="row between" style={{ marginTop: 6 }}><span className="muted">মোট বাজার</span><b style={{ fontSize: 22 }}>{fmtMoney(rep.total, g)}</b></div>
+        <div className="khai-outstanding"><div>এখনো বাকি: {fmtMoney(outstanding, g)}</div><div className="small muted">{outstanding ? 'পরিশোধ প্রাপক নিশ্চিত করলে অবশিষ্ট হিসাব কমবে।' : 'সব হিসাব মিটেছে ✓'}</div></div>
         {finalized ? <p className="small muted">চূড়ান্ত করেছেন {rep.finalized_by_name || 'অ্যাডমিন'} · {dateLabel(new Date(rep.finalized_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }))}</p>
           : <p className="small muted">এটি খসড়া রিপোর্ট। অ্যাডমিন চূড়ান্ত করার আগে বদলাতে পারে।</p>}
         <div className="btn-row noprint">

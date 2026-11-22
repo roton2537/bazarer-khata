@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import './styles.css';
+import './khai-khai.css';
 import { initMonitor, reportError } from './lib/monitor.js';
 
 initMonitor();
@@ -24,3 +25,11 @@ class Boundary extends React.Component {
 }
 
 createRoot(document.getElementById('root')).render(<Boundary><App /></Boundary>);
+
+// Install the offline shell even when push notifications are not configured.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* online mode continues */ });
+  }, { once: true });
+}
+

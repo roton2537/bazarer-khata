@@ -5,7 +5,7 @@ import { Btn, Field, Sheet, Tag, useAction, useConfirm, useToast } from '../ui.j
 import { dateLabel, dayLabel, todayDhaka, monthOf, toBnDigits } from '../lib/format.js';
 import { enablePush, disablePush, pushSupported } from '../lib/push.js';
 import { go } from '../App.jsx';
-import { Avatar } from './parts.jsx';
+import { Avatar, Header } from './parts.jsx';
 
 export default function Members({ view = 'members' }) {
   const s = useStore(); const g = s.group; const toast = useToast();
@@ -51,7 +51,7 @@ export default function Members({ view = 'members' }) {
 
   return (
     <>
-      <div className="topbar"><div className="eyebrow">{view === 'settings' ? 'আমার সেটিংস' : 'সদস্য ও আমন্ত্রণ'}</div><h1 className="break">{g.name}</h1></div>
+      <Header title={view === 'settings' ? 'সেটিংস' : 'সদস্য ও আমন্ত্রণ'} />
       {view === 'members' && <>
 
       <div className="card">

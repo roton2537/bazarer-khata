@@ -12,7 +12,7 @@ function Brand() {
   return (
     <div className="brand">
       <img className="logo" src="/icon.svg" alt="" />
-      <h1>বাজারের খাতা</h1>
+      <h1 className="khai-wordmark">KHAI KHAI</h1><p className="khai-entry-label">বাজারের খাতা</p>
       <p className="muted">একসঙ্গে থাকলে বাজারের হিসাব সবার কাছে পরিষ্কার</p>
     </div>
   );
@@ -26,7 +26,7 @@ function emailReturn(intent) {
 
 export function Welcome({ signedIn }) {
   return <main className="kh-welcome">
-    <header><img src="/icon.svg" alt="" width="32" height="32" />বাজারের খাতা</header>
+    <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">KHAI KHAI</strong><span className="khai-entry-label">বাজারের খাতা</span></header>
     <div className="kh-layout">
       <div className="kh-art" role="img" aria-label="নমুনা খাতা। চাল ১২০ টাকা ও ডাল ৬০ টাকা, মোট ১৮০ টাকা।">
         <div className="kh-cover" aria-hidden="true"></div>
@@ -96,7 +96,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
 
   return (
     <main className={(create || returning) ? 'kh-welcome kh-new kh-admin' : 'app no-nav'}>
-      {(create || returning) ? <header><img src="/icon.svg" alt="" width="32" height="32" />বাজারের খাতা<a href="#/">← ফিরে যান</a></header> : <Brand />}
+      {(create || returning) ? <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">KHAI KHAI</strong><a href="#/">← ফিরে যান</a></header> : <Brand />}
       <div className={(create || returning) ? 'kh-new-body' : undefined}>
       {invite && <div className="banner green">{group.name ? 'আমন্ত্রণ · ' + group.name : group.error || 'আমন্ত্রণ দেখা হচ্ছে…'}</div>}
       {returning && <><h1>আমার খাতা খুলুন</h1><p className="kh-admin-intro">আগের খাতায় ফিরতে আপনার ইমেইল ও পাসওয়ার্ড দিন।</p></>}
@@ -143,7 +143,7 @@ export function Onboarding({user}) {
     });
   };
   return <main className="kh-welcome kh-new">
-    <header><img src="/icon.svg" alt="" width="32" height="32" />বাজারের খাতা
+    <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">KHAI KHAI</strong>
       <a href="#/">← ফিরে যান</a>
     </header>
     <div className="kh-new-body">

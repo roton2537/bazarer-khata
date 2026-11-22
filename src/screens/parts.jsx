@@ -38,26 +38,30 @@ export function Skeleton() {
 
 export function Header({ title }) {
   const s = useStore();
-  const ms = s.data.months.map((m) => m.month);
+  const ms = s.data.months.map(m => m.month);
   const cm = monthOf(todayDhaka());
   const finalized = s.data.report.status === 'finalized';
-  const newest = ms[0] > cm ? ms[0] : cm;
-  const oldest = ms[ms.length - 1];
+  const newest = ms[0] && ms[0] > cm ? ms[0] : cm;
+  const oldest = ms[ms.length - 1] || cm;
   return (
-    <div className="topbar">
+    <header className="topbar">
       <div className="eyebrow">{title || 'বাজারের খাতা'}</div>
-      {s.memberships.length > 1 ? (
-        <select aria-label="গ্রুপ বদলান" value={s.gid} onChange={(e) => { s.setGid(e.target.value); go('#/'); }} style={{ fontWeight: 700, fontSize: 20, minHeight: 46, marginTop: 2 }}>
-          {s.memberships.map((m) => <option key={m.group_id} value={m.group_id}>{m.groups.name}</option>)}
-        </select>
-      ) : <h1 className="break">{s.group.name}</h1>}
-      <div className="monthbar">
-        <button className="nb" aria-label="আগের মাস" disabled={s.month <= oldest} onClick={() => s.setMonth(addMonths(s.month, -1))}>‹</button>
-        <div className="lbl">{monthLabel(s.month)} {finalized ? <Tag>চূড়ান্ত</Tag> : <Tag kind="amber">খসড়া</Tag>}</div>
-        <button className="nb" aria-label="পরের মাস" disabled={s.month >= newest} onClick={() => s.setMonth(addMonths(s.month, 1))}>›</button>
+      <div className="khai-masthead">
+        <h1 className="khai-wordmark">KHAI KHAI</h1>
+        {s.memberships.length <= 1 && <span className="khai-groupname">{s.group.name}</span>}
       </div>
-      {s.me?.left_on ? <div className="banner">আপনি এই গ্রুপ ছেড়েছেন। শুধু হিসাব দেখা ও বাকি টাকা মেটানো যাবে।</div> : null}
-    </div>
+      {s.memberships.length > 1 && <div className="khai-group-picker">
+        <select aria-label="গ্রুপ বদলান" value={s.gid} onChange={e => {s.setGid(e.target.value); go('#/');}}>
+          {s.memberships.map(m => <option key={m.group_id} value={m.group_id}>{m.groups.name}</option>)}
+        </select>
+      </div>}
+      <div className="monthbar">
+        <button type="button" className="nb" aria-label="আগের মাস" disabled={s.month <= oldest} onClick={() => s.setMonth(addMonths(s.month, -1))}>‹</button>
+        <div className="lbl">{monthLabel(s.month)} {finalized ? <Tag>চূড়ান্ত</Tag> : <Tag kind="amber">খসড়া</Tag>}</div>
+        <button type="button" className="nb" aria-label="পরের মাস" disabled={s.month >= newest} onClick={() => s.setMonth(addMonths(s.month, 1))}>›</button>
+      </div>
+      {s.me?.left_on && <div className="banner">আপনি এই গ্রুপ ছেড়েছেন। আগের হিসাব দেখা ও বাকি টাকা মেটানো যাবে।</div>}
+    </header>
   );
 }
 

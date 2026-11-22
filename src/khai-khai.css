@@ -1,0 +1,98 @@
+/* KHAI KHAI visual language — faithfully adapted from the supplied HTML.
+   All balances, members and payments stay connected to the existing ledger API. */
+:root {
+  --bg:#fbf7ef; --card:#ffffff; --ink:#14331f; --muted:#6b7a6e; --line:#e8e0d0;
+  --line-2:#f0e8d6; --green:#145a37; --green-d:#0f4a2e;
+  --green-l:#e6f4ea; --green-m:#1d7a44; --red:#b3261e;
+  --amber:#8a5a00; --amber-l:#f7e8b8; --r:22px;
+  --shadow:0 6px 20px rgba(20,50,30,.06); --nav-h:72px;
+}
+html { background:#e9e2d6; }
+body { background:#e9e2d6; color:var(--ink); font-family:'Hind Siliguri',system-ui,sans-serif; }
+#root { background:var(--bg); max-width:550px; margin:auto; box-shadow:0 0 36px rgba(32,51,33,.07); }
+.app { max-width:550px!important; min-height:100svh; background:var(--bg); padding-inline:16px!important; }
+.app.no-nav { padding-bottom:28px; }
+.app .topbar { position:relative; top:auto; background:transparent; padding:calc(18px + env(safe-area-inset-top)) 0 8px; }
+.app .eyebrow { font-size:12px; font-weight:600; color:var(--muted); letter-spacing:.07em; padding-right:54px; }
+.khai-masthead { display:flex; align-items:baseline; flex-wrap:wrap; gap:8px 14px; margin-top:1px; padding-right:55px; }
+.khai-wordmark { font:900 clamp(25px,7.6vw,31px)/1.1 system-ui,-apple-system,sans-serif; letter-spacing:.025em; color:var(--ink); white-space:nowrap; }
+.khai-groupname { font-size:13px; font-weight:700; color:var(--muted); max-width:100%; overflow-wrap:anywhere; }
+.khai-group-picker { width:100%; margin:7px 0 0; max-width:100%; }
+.khai-group-picker select { min-height:42px!important; margin:0; font-size:14px!important; font-weight:700!important; border-radius:13px; }
+.app .monthbar { margin-top:14px; gap:8px; }
+.app .monthbar .nb { width:36px; height:36px; background:#fff; border:1px solid var(--line); }
+.app .monthbar .lbl { background:#fff; border:1px solid var(--line); border-radius:999px; padding:8px 9px; font-weight:700; font-size:15px; min-width:0; }
+.app .monthbar .tag { font-size:11px; padding:2px 9px; background:#f7e8b8; color:#8a5a00; margin-left:4px; }
+.app .monthbar .tag:not(.amber) { background:#e6f4ea; color:#1a6b42; }
+.app .card { background:#fff; border:1px solid #eee5d3; border-radius:22px; padding:16px; box-shadow:var(--shadow); }
+.app .btn { background:#145a37; color:#fff; border:1px solid #145a37; border-radius:16px; min-height:48px; font-size:16px; font-weight:800; box-shadow:none; }
+.app .btn.secondary { background:#fff; color:#145a37; border-color:#145a37; }
+.app .btn.ghost { border-color:transparent; background:transparent; color:#145a37; }
+.app .btn.danger { background:#b3261e; border-color:#b3261e; color:#fff; }
+.app .btn.danger.secondary { background:#fff5f5; border-color:#f0b8b8; color:#b3261e; }
+.app .btn.small { min-height:38px; font-size:13px; padding:7px 11px; border-radius:12px; }
+.app input[type=text], .app input[type=search], .app input[type=email],
+.app input[type=password], .app input[type=date], .app input[type=number],
+.app select, .app textarea { background:#fff; border:1px solid #e0d6bd; border-radius:12px; min-height:47px; font-size:16px; max-width:100%; }
+.app .filters { grid-template-columns:minmax(0,1fr) minmax(0,130px); }
+.app .hero.khai-hero { margin:12px 0; background:linear-gradient(160deg,#0f4a2e,#145a37 55%,#1a6b42);
+  border-radius:26px; padding:20px; box-shadow:0 14px 28px rgba(15,74,46,.23); position:relative; isolation:isolate; overflow:hidden; }
+.app .hero.khai-hero::before { content:''; position:absolute; top:-32px; right:-25px; width:135px; height:135px; border:1px solid #ffffff30; border-radius:50%; pointer-events:none; }
+.app .hero.khai-hero::after { content:''; position:absolute; top:23px; right:18px; width:70px; height:70px; border:1px solid #ffffff23; border-radius:50%; pointer-events:none; }
+.khai-hero > * { position:relative; z-index:1; }
+.khai-hero .lbl { color:#d4eadc; letter-spacing:.02em; font-size:13px; }
+.khai-hero .big { font-size:clamp(28px,8vw,40px); line-height:1.2; font-weight:900; margin:7px 0 14px; overflow-wrap:anywhere; }
+.khai-hero .split { gap:10px; margin-top:10px; }
+.khai-hero .mini { min-width:0; padding:12px; border:1px solid #ffffff2e; background:#ffffff22; border-radius:16px; }
+.khai-hero .mini .lbl { display:block; letter-spacing:0; }
+.khai-hero .mini .v { display:block; font-size:clamp(15px,4.3vw,19px); line-height:1.4; margin-top:5px; overflow-wrap:anywhere; }
+.khai-hero .mini .v .pos { color:#d9f9de; } .khai-hero .mini .v .neg { color:#ffe2d9; }
+.khai-progress-caption { display:flex; justify-content:space-between; margin-top:15px; gap:12px; color:#d6eadc; font-size:12px; }
+.khai-progress { height:8px; background:#ffffff35; border-radius:999px; overflow:hidden; margin-top:7px; }
+.khai-progress i { display:block; height:100%; border-radius:inherit; background:#ffde7a; transition:width .25s; }
+.khai-home .home-actions { display:flex; align-items:stretch; gap:10px; margin:14px 0 20px; }
+.khai-home .home-actions a { flex:1; min-width:0; padding:10px 8px; font-size:14px; }
+.khai-home .khai-card { margin:14px 0 0; }
+.khai-section-head { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:7px; margin-bottom:11px; }
+.khai-section-head h2 { color:#14331f; font-size:18px; font-weight:800; }
+.khai-section-head a { font-size:12px; font-weight:700; text-decoration:none; }
+.khai-subheading { font-weight:800; font-size:14px; color:#6b7a6e; margin:14px 0 0; }
+.khai-due { display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid #f0e8d6; flex-wrap:wrap; }
+.khai-due:last-child { border-bottom:0; }
+.khai-due .grow { flex:1; min-width:80px; }
+.khai-due .grow b { display:block; font-size:15px; }
+.khai-due-value { margin-left:auto; color:#14331f; font-size:15px; font-weight:900; white-space:normal; text-align:right; }
+.khai-paid-btn { flex:none; border:1px solid #145a37; color:#145a37; background:#fff; border-radius:999px; padding:8px 10px; font-weight:800; font-size:12px; cursor:pointer; min-height:35px; }
+.khai-hint { padding-top:9px; }
+.khai-spender { padding:7px 0 9px; }
+.khai-spender-row { display:flex; align-items:baseline; gap:10px; font-size:14px; }
+.khai-spender-row > span:last-child { text-align:right; font-size:12px; }
+.khai-bar { height:8px; background:#f0e8d6; border-radius:999px; overflow:hidden; margin:7px 0 4px; }
+.khai-bar i { display:block; height:100%; background:#145a37; border-radius:inherit; }
+.khai-report-summary { padding:16px; }
+.khai-report-summary .khai-outstanding { border-radius:14px; padding:12px; background:#eef6ef; margin-top:12px; font-weight:700; }
+.app .nav { max-width:550px; }
+.nav { max-width:550px; margin:auto; left:50%; right:auto; transform:translateX(-50%); background:#fff; border-top:1px solid #eee5d3; }
+.nav-in { max-width:550px; padding:6px 4px 8px; }
+.nav a { font-size:12px; min-height:61px; border-radius:14px; }
+.nav a.on { background:#eef6ef; color:#145a37; font-weight:800; }
+.nav a.on::before { content:none; }
+.nav a svg { width:21px; height:21px; }
+.bell { right:max(16px,calc(50% - 258px)); background:#fff; width:44px; height:44px; top:calc(16px + env(safe-area-inset-top)); border:1px solid #e8e0d0; }
+.app .section > h2 { font-family:'Hind Siliguri',system-ui,sans-serif; font-weight:800; }
+.app .topbar h1 { font-family:'Hind Siliguri',system-ui,sans-serif; }
+.app .member-tags { max-width:140px; }
+.app .fold>summary h2 { font-size:16px; }
+@media (max-width:375px) {
+  .app { padding-inline:12px!important; }
+  .khai-hero .mini { padding:9px; }
+  .khai-home .home-actions { gap:8px; }
+  .app .filters { grid-template-columns:minmax(0,1fr) minmax(0,112px); }
+  .khai-due { gap:8px; }
+  .khai-due .avatar { width:34px; height:34px; }
+  .khai-due-value { font-size:13px; }
+}
+@media (min-width:760px) {
+  .app:not(.no-nav) { max-width:550px!important; padding-inline:22px!important; }
+}
+@media print { .nav { display:none!important; } #root { max-width:none; box-shadow:none; } .khai-card { break-inside:avoid; } }

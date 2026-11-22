@@ -78,7 +78,8 @@ export async function flushQueue(userId) {
           save(failedKey, [...read(failedKey), {...entry, reason: error.message, desc: entry.args.p_desc || ''}]);
         }
       }
-      save(pendingKey, read(pendingKey).slice(1));
+      // Re-read before removing: a second tab may have appended new work meanwhile.
+      save(pendingKey, read(pendingKey).filter(item => !(item.args?.p_token === entry.args?.p_token && item.args?.p_group === entry.args?.p_group)));
       announce();
     }
   } finally { flushing = false; announce(); }

@@ -25,3 +25,11 @@ class Boundary extends React.Component {
 }
 
 createRoot(document.getElementById('root')).render(<Boundary><App /></Boundary>);
+
+// Install the offline shell even when push notifications are not configured.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* online mode continues */ });
+  }, { once: true });
+}
+

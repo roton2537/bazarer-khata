@@ -38,9 +38,10 @@ function SetupMissing() {
 
 function Root() {
   const [session, setSession] = useState(undefined);
+  const [authError, setAuthError] = useState('');
   const hash = useHash();
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session || null));
+    supabase.auth.getSession().then(({ data, error }) => { if (error) throw error; setSession(data.session || null); }).catch(() => { setAuthError('লগইন যাচাই করা যায়নি। নেটওয়ার্ক দেখে আবার চেষ্টা করুন।'); setSession(null); });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => { if (event === 'PASSWORD_RECOVERY') go('#/recover'); setSession(s || null); });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -60,6 +61,7 @@ function Root() {
   }, [emailIntent, session]);
 
   if (session === undefined) return <div className="app no-nav center"><Spinner /></div>;
+  if (authError) return <main className="app no-nav"><section className="card stack" role="alert"><h1>সংযোগে সমস্যা</h1><p>{authError}</p><button className="btn" onClick={() => window.location.reload()}>আবার চেষ্টা করুন</button></section></main>;
   if (emailIntent) return <Spinner />;
   const token = hash.match(/^#\/access\/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/i)?.[1];
   if (token) return <AcceptLink key={token} token={token} />;

@@ -1,40 +1,86 @@
-// অফলাইন-সারি: নেটওয়ার্ক না থাকলে বাজার ও পরিশোধ লিখে রেখে নেট এলে পাঠানো হয়।
-// প্রতিটি অনুরোধে client_token আছে, তাই দুবার পাঠালেও একবারই যোগ হয় (সার্ভারে নিশ্চিত করা)।
-import { rpc } from './supabase.js';
+// Offline journal: never replay an entry under another account or silently drop a write.
+import { rpc, supabase } from './supabase.js';
+import { queueKey, sameOwner, queueable, legacyQueueKey } from './offline-core.js';
 
-const KEY = 'bk_queue_v1', FAIL = 'bk_queue_failed_v1';
-const SAFE = new Set(['add_purchase', 'add_payment']);
-const read = (k) => { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } };
-const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ভরা স্টোরেজ */ } };
-const emit = () => window.dispatchEvent(new Event('bk-queue'));
+const read = (key) => {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || '[]');
+    return Array.isArray(value) ? value : [];
+  } catch { return []; }
+};
+const save = (key, values) => {
+  const serialized = JSON.stringify(values);
+  try {
+    localStorage.setItem(key, serialized);
+    if (localStorage.getItem(key) !== serialized) throw new Error('Storage verification failed');
+  } catch {
+    throw new Error('ফোনের স্টোরেজে অফলাইন হিসাব রাখা যায়নি। আবার চেষ্টা করুন বা ইন্টারনেট চালু করুন।');
+  }
+};
+const announce = () => window.dispatchEvent(new Event('bk-queue'));
+const currentUser = async () => {
+  const {data, error} = await supabase.auth.getSession();
+  if (error) throw error;
+  return data.session?.user?.id || null;
+};
 export const isNetworkError = (e) => !navigator.onLine || /নেটওয়ার্কে সমস্যা|Failed to fetch|NetworkError|Load failed/i.test(e?.message || '');
 
-export const queueState = () => ({ pending: read(KEY), failed: read(FAIL) });
-export const dismissFailed = () => { write(FAIL, []); emit(); };
+export const queueState = (userId) => userId ? ({
+  pending: read(queueKey(userId)), failed: read(queueKey(userId, 'failed')), legacy: read(legacyQueueKey),
+}) : ({pending: [], failed: [], legacy: read(legacyQueueKey)});
+export const dismissFailed = (userId) => {
+  if (!userId) return;
+  save(queueKey(userId, 'failed'), []);
+  announce();
+};
 
 export async function rpcQueued(name, args) {
+  const userId = await currentUser();
+  if (!userId) throw new Error('হিসাব জমা দিতে প্রথমে খাতায় প্রবেশ করুন।');
   try { return await rpc(name, args); }
-  catch (e) {
-    if (SAFE.has(name) && isNetworkError(e)) { write(KEY, [...read(KEY), { name, args, at: Date.now() }]); emit(); return { queued: true }; }
-    throw e;
+  catch (error) {
+    if (!queueable(name) || !isNetworkError(error)) throw error;
+    // A sign-out or account switch may happen during the request.
+    if (await currentUser() !== userId) throw new Error('অ্যাকাউন্ট বদলেছে। লেখাটি আবার যাচাই করে জমা দিন।');
+    if (!args?.p_group || !args?.p_token) throw new Error('অফলাইন হিসাবের পরিচয় অসম্পূর্ণ; জমা দেওয়া যায়নি।');
+    const key = queueKey(userId);
+    const pending = read(key);
+    if (!pending.some(item => item.args?.p_token === args.p_token && item.args?.p_group === args.p_group)) {
+      save(key, [...pending, {name, args, userId, at: Date.now()}]);
+    }
+    announce();
+    return {queued: true};
   }
 }
 
 let flushing = false;
-export async function flushQueue() {
-  if (flushing) return 0;
-  flushing = true; let sent = 0;
+export async function flushQueue(userId) {
+  if (flushing || !userId) return 0;
+  flushing = true;
+  let sent = 0;
   try {
+    const pendingKey = queueKey(userId);
+    const failedKey = queueKey(userId, 'failed');
     for (;;) {
-      const q = read(KEY); if (!q.length) break;
-      const it = q[0];
-      try { await rpc(it.name, it.args); sent++; }
-      catch (e) {
-        if (isNetworkError(e)) break;                                   // নেট নেই: পরে আবার
-        write(FAIL, [...read(FAIL), { name: it.name, reason: e.message, at: it.at, desc: it.args.p_desc || '' }]);   // সার্ভার ফিরিয়েছে
+      if (await currentUser() !== userId) break;
+      const entries = read(pendingKey);
+      if (!entries.length) break;
+      const entry = entries[0];
+      if (!sameOwner(entry, userId) || !queueable(entry.name) || !entry.args.p_token) {
+        save(failedKey, [...read(failedKey), {reason: 'পুরোনো বা অন্য অ্যাকাউন্টের লেখা স্বয়ংক্রিয়ভাবে পাঠানো হয়নি।', desc: entry.args?.p_desc || '', at: entry.at}]);
+      } else {
+        try {
+          await rpc(entry.name, entry.args);
+          sent++;
+        } catch (error) {
+          if (isNetworkError(error)) break;
+          // Keep the entire failed operation for manual recovery.
+          save(failedKey, [...read(failedKey), {...entry, reason: error.message, desc: entry.args.p_desc || ''}]);
+        }
       }
-      write(KEY, read(KEY).slice(1)); emit();
+      save(pendingKey, read(pendingKey).slice(1));
+      announce();
     }
-  } finally { flushing = false; emit(); }
+  } finally { flushing = false; announce(); }
   return sent;
 }

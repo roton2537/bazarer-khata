@@ -96,3 +96,14 @@ body { background:#e9e2d6; color:var(--ink); font-family:'Hind Siliguri',system-
   .app:not(.no-nav) { max-width:550px!important; padding-inline:22px!important; }
 }
 @media print { .nav { display:none!important; } #root { max-width:none; box-shadow:none; } .khai-card { break-inside:avoid; } }
+
+/* Welcome, onboarding and account forms keep their existing logic and adopt the new wordmark. */
+.khai-entry-mark { font:900 20px/1.15 system-ui,sans-serif; letter-spacing:.025em; }
+.khai-entry-label { font-size:12px; font-weight:600; color:#607968; }
+.kh-welcome { background:#fbf7ef; }
+.kh-welcome header { border-color:#e8e0d0; }
+.kh-welcome .kh-intro .kh-create { background:#145a37; border-radius:16px; }
+.kh-welcome .kh-intro a { border-radius:16px; min-height:50px; }
+.brand .khai-wordmark { font-size:30px; }
+.brand .khai-entry-label { margin:3px 0 0; }
+@media(max-width:370px) { .kh-welcome header { gap:7px; } .khai-entry-mark { font-size:17px; } }

@@ -20,7 +20,10 @@ export function StoreProvider({ session, children }) {
   const seq = useRef(0);
 
   const loadMemberships = useCallback(async () => {
-    const rows = await q(supabase.from('members').select('*, groups(id,name,currency_code,currency_symbol,currency_name,currency_gen,currency_decimals,created_at)').eq('user_id', uid).order('created_at'));
+    const [rows, p] = await Promise.all([
+      q(supabase.from('members').select('*, groups(id,name,currency_code,currency_symbol,currency_name,currency_gen,currency_decimals,created_at)').eq('user_id', uid).order('created_at')),
+      q(supabase.from('profiles').select('*').eq('id', uid).maybeSingle()),
+    ]);
     // প্রতি গ্রুপে সর্বশেষ সদস্যপদ
     const byG = new Map();
     for (const r of rows) {
@@ -29,7 +32,7 @@ export function StoreProvider({ session, children }) {
     }
     const list = [...byG.values()].filter((r) => r.groups);
     setMemberships(list);
-    const p = await q(supabase.from('profiles').select('*').eq('id', uid).maybeSingle());
+
     setProfile(p);
     return list;
   }, [uid]);
@@ -79,13 +82,18 @@ export function StoreProvider({ session, children }) {
   useEffect(() => {
     if (!gid) return undefined;
     let ch;
+    let timer;
+    const schedule = () => {
+      if (document.visibilityState !== 'visible') return;
+      clearTimeout(timer);
+      timer = setTimeout(() => loadGroup(gid, month), 350);
+    };
     try {
-      ch = supabase.channel(`ev-${gid}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events', filter: `group_id=eq.${gid}` },
-        () => loadGroup(gid, month)).subscribe();
-    } catch { /* ঐচ্ছিক */ }
-    const onVis = () => { if (document.visibilityState === 'visible') loadGroup(gid, month); };
+      ch = supabase.channel(`ev-${gid}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events', filter: `group_id=eq.${gid}` }, schedule).subscribe();
+    } catch { /* Realtime is optional; foreground refresh still works. */ }
+    const onVis = () => { if (document.visibilityState === 'visible') schedule(); };
     document.addEventListener('visibilitychange', onVis);
-    return () => { document.removeEventListener('visibilitychange', onVis); if (ch) supabase.removeChannel(ch); };
+    return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', onVis); if (ch) supabase.removeChannel(ch); };
   }, [gid, month, loadGroup]);
 
   const cur = memberships?.find((x) => x.group_id === gid) || null;

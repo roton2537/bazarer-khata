@@ -25,6 +25,8 @@ export async function newDb() {
   await db.exec(readFileSync(join(here, '../supabase/migrations/0005_privacy_expiry_hardening.sql'), 'utf8'));
   await db.exec(readFileSync(join(here, '../supabase/migrations/0006_recovery_ack_reminders.sql'), 'utf8'));
   await db.exec(readFileSync(join(here, '../supabase/migrations/0007_adjustments_history_testpush.sql'), 'utf8'));
+  await db.exec(readFileSync(join(here, '../supabase/migrations/0008_security_index_hardening.sql'), 'utf8'));
+
   return db;
 }
 

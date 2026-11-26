@@ -10,7 +10,7 @@ export function StoreProvider({ session, children }) {
   const uid = session.user.id;
   const toast = useToast();
   const [memberships, setMemberships] = useState(null);       // আমার সব সদস্যপদ (গ্রুপসহ)
-  const [gid, setGidState] = useState(() => localStorage.getItem('bk_gid') || null);
+  const [gid, setGid] = useState(() => new URLSearchParams(location.search).get('ledger'));
   const [month, setMonth] = useState(monthOf(todayDhaka()));
   const [loaded, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -37,7 +37,6 @@ export function StoreProvider({ session, children }) {
     return list;
   }, [uid]);
 
-  const setGid = useCallback((id) => { setGidState(id); if (id) localStorage.setItem('bk_gid', id); }, []);
 
   const loadGroup = useCallback(async (g, m) => {
     const my = ++seq.current;
@@ -104,22 +103,12 @@ export function StoreProvider({ session, children }) {
   const myRow = data?.report?.members?.find((m) => m.id === me?.id) || null;
 
   // খবর: কোনটি আমি দেখিনি (এই ডিভাইসে শেষ দেখার সময় ধরে)
-  const [seenTick, setSeenTick] = useState(0);
-  const seenKey = `bk_seen_${gid}`;
-  const unread = useMemo(() => {
-    if (!data || !me) return 0;
-    let seen = ''; try { seen = localStorage.getItem(seenKey) || ''; } catch { /* */ }
-    if (!seen) return 0;   // প্রথমবার: সবকিছুকে "না-পড়া" দেখানো হয় না
-    return data.events.filter((e) => e.created_at > seen && e.actor_id !== me.id).length;
-  }, [data, me, seenKey, seenTick]);
-  const markFeedSeen = useCallback(() => {
-    try { localStorage.setItem(seenKey, new Date().toISOString()); } catch { /* */ }
-    setSeenTick((n) => n + 1);
-  }, [seenKey]);
-
-  useEffect(() => { // প্রথমবার খুললে বর্তমান খবরগুলো "দেখা" ধরা হয়
-    try { if (data && me && !localStorage.getItem(seenKey)) markFeedSeen(); } catch { /* */ }
-  }, [data, me, seenKey, markFeedSeen]);
+  const [seen, setSeen] = useState({});
+  const markFeedSeen = useCallback(() => setSeen(current => ({ ...current, [gid]: new Date().toISOString() })), [gid]);
+  useEffect(() => {
+    if (data && !seen[gid]) markFeedSeen();
+  }, [gid, data, seen, markFeedSeen]);
+  const unread = data?.events.filter(e => seen[gid] && e.created_at > seen[gid] && e.actor_id !== me?.id).length || 0;
 
   const value = { unread, markFeedSeen, session, uid, profile, memberships, gid, setGid, group, month, setMonth, data, loading, error, refresh, me, isAdmin, isActive, myRow, reloadGroup: () => loadGroup(gid, month) };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

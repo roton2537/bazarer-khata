@@ -3,7 +3,7 @@ import { useStore } from '../store.jsx';
 import { Header, Balance, Avatar, Empty } from './parts.jsx';
 import { fmtMoney, dayLabel, todayDhaka, monthOf, toBnDigits } from '../lib/format.js';
 import { PaySheet } from './Report.jsx';
-import { Tour, LastMonthOpenBanner } from './Banners.jsx';
+import { LastMonthOpenBanner } from './Banners.jsx';
 import { go } from '../App.jsx';
 import { rpc } from '../lib/supabase.js';
 import { Btn, useAction } from '../ui.jsx';
@@ -41,10 +41,9 @@ export default function Home() {
       </section>
 
       <div className="home-actions" aria-label="খাতার কাজ">
-        {s.isActive && <a className="btn" href="#/add">+ বাজার লিখুন</a>}
+        {s.isActive && rep.status !== 'finalized' && s.month === monthOf(todayDhaka()) && <a className="btn" href="#/add">+ বাজার লিখুন</a>}
         <a className="btn secondary" href="#/report">মাসিক হিসাব</a>
       </div>
-      <Tour />
       <LastMonthOpenBanner />
       {s.isAdmin && s.data.members.filter(member => !member.left_on).length === 1 &&
         <section className="card stack khai-card"><h2>সদস্য আমন্ত্রণ করুন</h2><p>লিংক পাঠিয়ে ইমেইল অ্যাকাউন্ট ছাড়াই সদস্য যোগ করুন।</p><a href="#/members">আমন্ত্রণ লিংক তৈরি করুন →</a></section>}
@@ -97,7 +96,7 @@ export default function Home() {
 
       <section className="card khai-card" aria-label="সাম্প্রতিক বাজার">
         <div className="khai-section-head"><h2>সাম্প্রতিক বাজার</h2><a href="#/list">সব দেখুন</a></div>
-        {recent.length === 0 ? <Empty title="এ মাসে এখনও কোনো বাজার নেই">{s.isActive && <p className="small">প্রথম বাজারটি লিখে শুরু করুন।</p>}</Empty>
+        {recent.length === 0 ? <Empty title="এ মাসে এখনও কোনো বাজার নেই">{s.isActive && rep.status !== 'finalized' && s.month === monthOf(todayDhaka()) && <p className="small">প্রথম বাজারটি লিখে শুরু করুন।</p>}</Empty>
           : recent.map(p => <div className="khai-due" key={p.id}>
             <Avatar name={nameOf(p.buyer_id)} id={p.buyer_id} />
             <div className="grow"><b className="break">{p.description}</b><div className="small muted">{nameOf(p.buyer_id)} · {dayLabel(p.bazar_date)}</div></div>

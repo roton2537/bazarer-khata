@@ -2,9 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase, configured } from './lib/supabase.js';
 import { ToastProvider, Spinner } from './ui.jsx';
 import { StoreProvider, useStore } from './store.jsx';
-import { OfflineBanner } from './screens/Banners.jsx';
 import { toBnDigits } from './lib/format.js';
-import RecoveryGate from './screens/RecoveryGate.jsx';
 import { AuthScreen, Onboarding, Welcome, Invite, Account, PasswordForm } from './screens/Entry.jsx';
 import { AcceptLink, OpenLedger } from './screens/PhoneAccess.jsx';
 import Home from './screens/Home.jsx';
@@ -91,7 +89,7 @@ function Authed({ hash, invite }) {
     <section className="kh-new-body card stack"><h1>আমার খাতা</h1>
       <p>এই অ্যাকাউন্টে এখনও কোনো খাতা নেই। নতুন খাতা তৈরি করুন অথবা সদস্য হিসেবে অ্যাডমিনের আমন্ত্রণ লিংক খুলুন।</p>
       <a className="btn" href="#/create">নতুন খাতা তৈরি করুন</a>
-      <a href="#/restore">রিকভারি কোড দিয়ে পুরোনো খাতা খুলুন</a>
+      <a href="#/restore">সদস্যের আমন্ত্রণ টোকেন দিন</a>
       <a href="#/account">আমার অ্যাকাউন্ট</a>
     </section></main>;
   if (!s.memberships.length || hash === '#/new-group') return <Welcome signedIn />;
@@ -118,10 +116,8 @@ function Authed({ hash, invite }) {
         <a className={`bell${r === '/feed' ? ' on' : ''}`} href="#/feed" aria-label={s.unread ? `খবর, ${s.unread}টি নতুন` : 'খবর'}>
           <Icon name="bell" />{s.unread ? <span className="badge">{s.unread > 9 ? '৯+' : toBnDigits(s.unread)}</span> : null}
         </a>
-        <OfflineBanner />
         {body}
       </div>
-      {s.isAdmin && s.me && !s.me.recovery_saved_at ? <RecoveryGate /> : null}
       <nav className="nav" aria-label="প্রধান মেনু"><div className="nav-in">
         {tabs.map(([p, ic, label, badge]) => (
           <a key={p} aria-current={r === p ? "page" : undefined} href={`#${p}`} className={r === p || (p === '/' && r === '') ? 'on' : ''}>

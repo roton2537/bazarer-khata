@@ -98,7 +98,7 @@ function Authed({ hash, invite }) {
   if (!s.group || !s.data) return <Skeleton />;
 
   const r = hash === '#/open' || hash === '#/signin' ? '/' : hash.replace(/^#/, '') || '/';
-  if (r === '/add') return <PurchaseForm />;
+  if (r === '/add') return <PurchaseForm key={`add-${s.gid}-${s.me?.id}`} />;
   if (r.startsWith('/edit/')) return <PurchaseForm key={r} editId={r.split('/')[2]} />;
 
   const pendingForMe = (s.data.report.payments || []).filter((p) => p.status === 'pending' && p.to === s.me?.id).length;

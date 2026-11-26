@@ -180,6 +180,7 @@ export default function Report() {
             {finSheet.pending_corrections > 0 ? <p>অমীমাংসিত সংশোধনের অনুরোধ: <b>{finSheet.pending_corrections}টি</b> (এগুলো বাতিল হয়ে যাবে)</p> : null}
             {finSheet.pending_payments > 0 ? <p>নিশ্চিত হয়নি এমন পরিশোধ: <b>{finSheet.pending_payments}টি</b> (এগুলো হিসাবে ধরা হবে না)</p> : null}
           </div>
+          {pendingCorr.map(c => <p key={c.id} className="small break"><b>{KIND[c.kind]}</b> · {c.requested_by_name} · {c.description || c.old?.description}{c.reason && ` · ${c.reason}`}</p>)}
           {rep.payments.filter((p) => p.status === 'pending').map((p) => <div key={p.id} className="small" style={{ marginTop: 6 }}>{p.from_name} → {p.to_name}: {fmtMoney(p.amount, g)}</div>)}
           <p className="small muted">প্রাপকদের আগে নিশ্চিত করতে বলা বা অনুরোধগুলো নিষ্পত্তি করাই ভালো। চাইলে এখনই চূড়ান্ত করতে পারেন।</p>
           <div className="btn-row"><button className="btn secondary" onClick={() => setFinSheet(null)}>আগে ঠিক করি</button><Btn busy={busy} className="danger" onClick={forceFinalize}>তবুও চূড়ান্ত করুন</Btn></div>

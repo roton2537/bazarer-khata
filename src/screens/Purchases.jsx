@@ -5,6 +5,7 @@ import { fmtMoney, parseMoney, minorToInput, todayDhaka, monthOf, dayLabel, newT
 import { Btn, Field, useAction, useConfirm, useToast } from '../ui.jsx';
 import { rpc, supabase, q } from '../lib/supabase.js';
 import { rpcQueued } from '../lib/offline.js';
+import { readPurchaseDraft } from '../lib/purchase-draft.js';
 import { go } from '../App.jsx';
 
 export function PurchaseList() {
@@ -89,15 +90,64 @@ export function PurchaseForm({ editId }) {
   const today = todayDhaka(); const cm = monthOf(today);
   const [ask, confirmNode] = useConfirm();
   const [busy, run] = useAction();
-  const token = useRef(newToken());          // একই ফর্ম থেকে একবারই বাজার যোগ হবে
+  const draftKey = editId ? null : `bk_purchase_draft_${s.uid}_${s.gid}_${s.me?.id}`;
+  const [initial] = useState(() => draftKey ? readPurchaseDraft(draftKey) : { raw: null, draft: null });
+  const draft = initial.draft;
+  const token = useRef(draft?.token || newToken());
+  const [draftStatus, setDraftStatus] = useState('');
+  const savedVersion = useRef(initial.raw);
+  const [conflict, setConflict] = useState(false);
   const activeMembers = s.data.members.filter((m) => !m.left_on);
-  const [date, setDate] = useState(editing?.bazar_date || today);
-  const [buyer, setBuyer] = useState(editing?.buyer_id || s.me?.id);
-  const [desc, setDesc] = useState(editing?.description || '');
-  const [mode, setMode] = useState(editing?.purchase_items?.length ? 'items' : 'total');
-  const [total, setTotal] = useState(editing && !editing.purchase_items.length ? minorToInput(editing.amount, dec) : '');
-  const [items, setItems] = useState(editing?.purchase_items?.length ? editing.purchase_items.map((i) => ({ name: i.name, amount: minorToInput(i.amount, dec) })) : [{ name: '', amount: '' }, { name: '', amount: '' }]);
+  const [date, setDate] = useState(editing?.bazar_date || draft?.date || today);
+  const [buyer, setBuyer] = useState(editing?.buyer_id || (activeMembers.some(m => m.id === draft?.buyer) ? draft.buyer : s.me?.id));
+  const [desc, setDesc] = useState(editing?.description || draft?.desc || '');
+  const [mode, setMode] = useState(editing?.purchase_items?.length ? 'items' : draft?.mode || 'total');
+  const [total, setTotal] = useState(editing && !editing.purchase_items.length ? minorToInput(editing.amount, dec) : draft?.total || '');
+  const [items, setItems] = useState(editing?.purchase_items?.length ? editing.purchase_items.map((i) => ({ name: i.name, amount: minorToInput(i.amount, dec) })) : draft?.items || [{ name: '', amount: '' }, { name: '', amount: '' }]);
   const [preview, setPreview] = useState([]);
+
+  useEffect(() => {
+    if (!draftKey) return;
+    const changed = (event) => {
+      if (event.key === draftKey || event.key === null) setConflict(true);
+    };
+    window.addEventListener('storage', changed);
+    return () => window.removeEventListener('storage', changed);
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftKey || conflict) return;
+    const started = desc || total || items.some(item => item.name || item.amount)
+      || mode !== 'total' || date !== today || buyer !== s.me?.id;
+    if (!started && !savedVersion.current) return;
+    try {
+      if (localStorage.getItem(draftKey) !== savedVersion.current) {
+        setConflict(true);
+        return;
+      }
+      const next = JSON.stringify({ token: token.current, date, buyer, desc, mode, total, items });
+      if (started) localStorage.setItem(draftKey, next);
+      else localStorage.removeItem(draftKey);
+      savedVersion.current = started ? next : null;
+      setDraftStatus(started ? 'এই ডিভাইসে খসড়া সংরক্ষিত আছে।' : '');
+    } catch {
+      setDraftStatus('এই ডিভাইসে খসড়া রাখা যায়নি। বের হওয়ার আগে বাজারটি জমা দিন।');
+    }
+  }, [draftKey, conflict, date, buyer, desc, mode, total, items, today, s.me?.id]);
+
+  const clearDraft = () => {
+    try {
+      if (localStorage.getItem(draftKey) !== savedVersion.current) return false;
+      localStorage.removeItem(draftKey);
+      return true;
+    } catch { return false; }
+  };
+  const discardDraft = async () => {
+    if (await ask({ title: 'এই খসড়াটি মুছবেন?', body: 'খসড়ার লেখা আর ফিরে পাওয়া যাবে না।', confirmText: 'খসড়া মুছুন', danger: true })) {
+      if (clearDraft()) go('#/');
+      else toast('খসড়া মুছতে পারিনি। আবার খুলে চেষ্টা করুন।', true);
+    }
+  };
 
   const itemsMinor = items.map((i) => ({ name: i.name.trim(), amount: parseMoney(i.amount, dec) })).filter((i) => i.name || i.amount);
   const itemsSum = itemsMinor.reduce((a, i) => a + (i.amount || 0), 0);
@@ -120,6 +170,7 @@ export function PurchaseForm({ editId }) {
   const setItem = (i, k, v) => setItems((a) => a.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
   const submit = (e) => {
     e.preventDefault();
+    if (conflict) return;
     if (!desc.trim() && !(mode === 'items' && itemsMinor.length)) return toast('কী কিনেছেন লিখুন।', true);
     if (!amount || amount <= 0) return toast('খরচের টাকা লিখুন।', true);
     if (!validItems) return toast('প্রতিটি আইটেমের নাম ও টাকা দিন।', true);
@@ -128,6 +179,7 @@ export function PurchaseForm({ editId }) {
       if (editing) await rpc('update_purchase', { p_id: editing.id, p_date: date, p_buyer: buyer, p_desc: desc, p_amount: amount, p_items: payload });
       else {
         const r = await rpcQueued('add_purchase', { p_group: s.gid, p_token: token.current, p_date: date, p_buyer: buyer, p_desc: desc, p_amount: amount, p_items: payload });
+        clearDraft();
         if (r?.queued) { toast('ইন্টারনেট নেই। বাজারটি ফোনে রাখা আছে, নেট এলে নিজে থেকে জমা হবে।'); go('#/'); return; }
       }
       await s.reloadGroup(); go('#/');
@@ -143,6 +195,8 @@ export function PurchaseForm({ editId }) {
   return (
     <div className="app no-nav">
       <div className="topbar"><div className="row"><button className="monthbar nb" style={{ width: 44, height: 44, borderRadius: 50, border: '1.5px solid var(--line)', background: 'var(--card)', color: 'var(--green)', fontSize: 20 }} onClick={() => go(editing ? '#/list' : '#/')} aria-label="ফিরে যান">←</button><h1 className="grow">{editing ? 'বাজার সংশোধন' : 'বাজার যোগ করুন'}</h1></div></div>
+      {conflict ? <div className="banner" role="alert">অন্য ট্যাবে এই খসড়া বদলেছে। <button className="btn small secondary" onClick={() => window.location.reload()}>সর্বশেষ খসড়া খুলুন</button></div>
+        : draftStatus && <div className="row wrap small"><span className="grow" role="status">{draftStatus}</span><button type="button" className="btn small ghost" disabled={busy} onClick={discardDraft}>খসড়া মুছুন</button></div>}
       <form className="card" onSubmit={submit}>
         <Field label="কী কিনেছেন"><input type="text" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="যেমন: চাল, ডাল, তেল" maxLength={200} autoFocus={!editing} /></Field>
         <div className="seg" style={{ marginTop: 14 }}>
@@ -179,7 +233,7 @@ export function PurchaseForm({ editId }) {
           )}
         </div>
         {editing ? <div style={{ marginTop: 14 }}><Btn busy={busy} type="button" className="danger secondary" onClick={remove}>বাজারটি মুছুন</Btn></div> : null}
-        <div className="cta-bar form"><Btn busy={busy} type="submit">{editing ? 'সংশোধন সংরক্ষণ করুন' : 'সংরক্ষণ করুন'}</Btn></div>
+        <div className="cta-bar form"><Btn busy={busy} disabled={conflict} type="submit">{editing ? 'সংশোধন সংরক্ষণ করুন' : 'সংরক্ষণ করুন'}</Btn></div>
       </form>
       {confirmNode}
     </div>

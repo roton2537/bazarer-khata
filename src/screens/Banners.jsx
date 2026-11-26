@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store.jsx';
 import { Btn } from '../ui.jsx';
 import { queueState, flushQueue, dismissFailed } from '../lib/offline.js';
@@ -12,11 +12,13 @@ export function OfflineBanner() {
   const [busy, setBusy] = useState(false);
   const refresh = () => setSt(queueState(s.uid));
   const flush = async () => { setBusy(true); setSyncError(''); try { const n = await flushQueue(s.uid); if (n) await s.reloadGroup(); } catch(e) { setSyncError(e.message); } finally { setBusy(false); refresh(); } };
+  const latestFlush = useRef(flush);
+  useEffect(() => { latestFlush.current = flush; });
   useEffect(() => {
     window.addEventListener('bk-queue', refresh);
-    const online = () => flush();
+    const online = () => latestFlush.current();
     window.addEventListener('online', online);
-    if (navigator.onLine) flush();
+    if (navigator.onLine) online();
     return () => { window.removeEventListener('bk-queue', refresh); window.removeEventListener('online', online); };
   }, []);
   if (!st.pending.length && !st.failed.length && !st.legacy.length && !syncError) return null;

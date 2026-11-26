@@ -11,11 +11,12 @@ export function PurchaseList() {
   const s = useStore(); const g = s.group;
   const [open, setOpen] = useState(null);
   const [search, setSearch] = useState(''); const [who, setWho] = useState('');
+  const toast = useToast();
   const [hist, setHist] = useState({});
   const loadHistory = async (id) => {
     if (hist[id]) return;
     try { const rows = await q(supabase.from('purchase_history').select('*').eq('purchase_id', id).order('changed_at')); setHist((h) => ({ ...h, [id]: rows })); }
-    catch { setHist((h) => ({ ...h, [id]: [] })); }
+    catch { toast('পরিবর্তনের ইতিহাস আনা যায়নি। আবার খুলে চেষ্টা করুন।', true); }
   };
   const [ask, confirmNode] = useConfirm();
   const [busy, run] = useAction();
@@ -42,20 +43,21 @@ export function PurchaseList() {
       </div>}
       {filtered && s.data.purchases.length > 0 && <p className="small muted" style={{ marginTop: 8 }}>{fmtNum(list.length)}টি বাজার, মোট {fmtMoney(list.reduce((a, p) => a + p.amount, 0), g)}</p>}
       <div className="card" style={{ marginTop: 6 }}>
-        {s.data.purchases.length === 0 ? <Empty title="এ মাসে কোনো বাজার নেই" /> : list.length === 0 ? <Empty title="কিছু পাওয়া যায়নি" /> : list.map((p) => {
+        {s.data.purchases.length === 0 ? <Empty title="এ মাসে কোনো বাজার নেই" /> : list.length === 0 ? <Empty title="কিছু পাওয়া যায়নি"><button type="button" className="btn small secondary" onClick={() => { setSearch(''); setWho(''); }}>সব বাজার দেখুন</button></Empty> : list.map((p) => {
           const head = p.bazar_date !== lastDate ? <div className="date-head">{dayLabel(p.bazar_date)}</div> : null;
           lastDate = p.bazar_date;
           return (
             <div key={p.id}>
               {head}
-              <div className="item" onClick={() => { setOpen(open === p.id ? null : p.id); loadHistory(p.id); }} style={{ cursor: 'pointer' }}>
-                <div className="row">
+              <div className="item">
+                <button type="button" className="row purchase-toggle" aria-expanded={open === p.id} onClick={() => { setOpen(open === p.id ? null : p.id); if (open !== p.id) loadHistory(p.id); }}>
                   <Avatar name={nameOf(p.buyer_id)} id={p.buyer_id} />
-                  <div className="grow"><div className="t break">{p.description}</div><div className="small muted">ক্রেতা: {nameOf(p.buyer_id)}</div></div>
-                  <div className="amt">{fmtMoney(p.amount, g)}</div>
-                </div>
+                  <span className="grow"><span className="t break">{p.description}</span><small className="muted">ক্রেতা: {nameOf(p.buyer_id)}</small></span>
+                  <span className="amt">{fmtMoney(p.amount, g)}</span>
+                  <span aria-hidden="true">{open === p.id ? "−" : "+"}</span>
+                </button>
                 {open === p.id ? (
-                  <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
+                  <div style={{ marginTop: 8 }}>
                     {p.purchase_items.length > 0 ? (
                       <div className="kv" style={{ marginBottom: 8 }}>{p.purchase_items.map((i) => <React.Fragment key={i.id}><span className="k">{i.name}</span><span>{fmtMoney(i.amount, g)}</span></React.Fragment>)}</div>
                     ) : null}
@@ -104,10 +106,15 @@ export function PurchaseForm({ editId }) {
 
   useEffect(() => {
     if (!amount || amount <= 0) { setPreview([]); return undefined; }
+    let current = true;
+    setPreview([]);
     const t = setTimeout(async () => {
-      try { setPreview(await rpc('preview_split', { p_group: s.gid, p_date: date, p_amount: amount })); } catch { setPreview([]); }
+      try {
+        const shares = await rpc('preview_split', { p_group: s.gid, p_date: date, p_amount: amount });
+        if (current) setPreview(shares);
+      } catch { /* The preview stays empty when the request fails. */ }
     }, 250);
-    return () => clearTimeout(t);
+    return () => { current = false; clearTimeout(t); };
   }, [amount, date, s.gid]);
 
   const setItem = (i, k, v) => setItems((a) => a.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
@@ -135,7 +142,7 @@ export function PurchaseForm({ editId }) {
 
   return (
     <div className="app no-nav">
-      <div className="topbar"><div className="row"><button className="monthbar nb" style={{ width: 44, height: 44, borderRadius: 50, border: '1.5px solid var(--line)', background: 'var(--card)', color: 'var(--green)', fontSize: 20 }} onClick={() => history.back()} aria-label="ফিরে যান">←</button><h1 className="grow">{editing ? 'বাজার সংশোধন' : 'বাজার যোগ করুন'}</h1></div></div>
+      <div className="topbar"><div className="row"><button className="monthbar nb" style={{ width: 44, height: 44, borderRadius: 50, border: '1.5px solid var(--line)', background: 'var(--card)', color: 'var(--green)', fontSize: 20 }} onClick={() => go(editing ? '#/list' : '#/')} aria-label="ফিরে যান">←</button><h1 className="grow">{editing ? 'বাজার সংশোধন' : 'বাজার যোগ করুন'}</h1></div></div>
       <form className="card" onSubmit={submit}>
         <Field label="কী কিনেছেন"><input type="text" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="যেমন: চাল, ডাল, তেল" maxLength={200} autoFocus={!editing} /></Field>
         <div className="seg" style={{ marginTop: 14 }}>

@@ -99,7 +99,7 @@ function Authed({ hash, invite }) {
 
   const r = hash === '#/open' || hash === '#/signin' ? '/' : hash.replace(/^#/, '') || '/';
   if (r === '/add') return <PurchaseForm />;
-  if (r.startsWith('/edit/')) return <PurchaseForm editId={r.split('/')[2]} />;
+  if (r.startsWith('/edit/')) return <PurchaseForm key={r} editId={r.split('/')[2]} />;
 
   const pendingForMe = (s.data.report.payments || []).filter((p) => p.status === 'pending' && p.to === s.me?.id).length;
   const tabs = [
@@ -124,7 +124,7 @@ function Authed({ hash, invite }) {
       {s.isAdmin && s.me && !s.me.recovery_saved_at ? <RecoveryGate /> : null}
       <nav className="nav" aria-label="প্রধান মেনু"><div className="nav-in">
         {tabs.map(([p, ic, label, badge]) => (
-          <a key={p} href={`#${p}`} className={r === p || (p === '/' && r === '') ? 'on' : ''}>
+          <a key={p} aria-current={r === p ? "page" : undefined} href={`#${p}`} className={r === p || (p === '/' && r === '') ? 'on' : ''}>
             <Icon name={ic} />{label}{badge ? <span className="badge">{badge}</span> : null}
           </a>
         ))}

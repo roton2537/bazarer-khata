@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
 
 export function Spinner() { return <span className="spin" aria-label="লোড হচ্ছে" />; }
@@ -45,14 +46,14 @@ export function Sheet({ title, onClose, children, role = 'dialog' }) {
       (event.shiftKey ? controls.at(-1) : controls[0])?.focus();
     }
   };
-  return (
+  return createPortal(
     <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
       <div className="sheet" ref={panel} role={role} tabIndex={-1} aria-modal="true" aria-labelledby={titleId} onKeyDown={handleKeys}>
         <div className="grab" />
         <h2 id={titleId} style={{ marginBottom: 8 }}>{title}</h2>
         {children}
       </div>
-    </div>
+    </div>, document.body
   );
 }
 

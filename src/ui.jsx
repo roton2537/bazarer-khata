@@ -1,10 +1,11 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import React, { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
 
 export function Spinner() { return <span className="spin" aria-label="লোড হচ্ছে" />; }
 
 export function Btn({ busy, children, className = '', ...p }) {
   return (
-    <button className={`btn ${className}`} disabled={busy || p.disabled} {...p}>
+    <button className={`btn ${className}`} {...p} disabled={busy || p.disabled}>
       {busy ? <Spinner /> : null}{children}
     </button>
   );
@@ -21,19 +22,38 @@ export function Field({ label, children, hint }) {
   );
 }
 
-export function Sheet({ title, onClose, children }) {
+export function Sheet({ title, onClose, children, role = 'dialog' }) {
+  const panel = useRef(null);
+  const titleId = useId();
   useEffect(() => {
-    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    const previous = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    if (!panel.current.contains(previous)) panel.current.focus();
+    return () => {
+      document.body.style.overflow = overflow;
+      if (previous?.isConnected) previous.focus();
+    };
   }, []);
-  return (
+  const handleKeys = (event) => {
+    if (event.key === 'Escape') { onClose?.(); return; }
+    if (event.key !== 'Tab') return;
+    const controls = Array.from(panel.current.querySelectorAll('a[href], button:enabled, input:enabled, select:enabled, textarea:enabled, summary'))
+      .filter(control => control.getClientRects().length > 0);
+    const edge = event.shiftKey ? controls[0] : controls.at(-1);
+    if (document.activeElement === edge || document.activeElement === panel.current) {
+      event.preventDefault();
+      (event.shiftKey ? controls.at(-1) : controls[0])?.focus();
+    }
+  };
+  return createPortal(
     <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
-      <div className="sheet" role="dialog" aria-modal="true">
+      <div className="sheet" ref={panel} role={role} tabIndex={-1} aria-modal="true" aria-labelledby={titleId} onKeyDown={handleKeys}>
         <div className="grab" />
-        {title ? <h2 style={{ marginBottom: 8 }}>{title}</h2> : null}
+        <h2 id={titleId} style={{ marginBottom: 8 }}>{title}</h2>
         {children}
       </div>
-    </div>
+    </div>, document.body
   );
 }
 

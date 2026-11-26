@@ -24,7 +24,25 @@ export default function Report() {
   const meId = s.me?.id;
   const reload = () => s.reloadGroup();
   const [adjSheet, setAdjSheet] = useState(false);
-  useEffect(() => { const open = () => document.querySelectorAll('details.fold').forEach((d) => { d.open = true; }); window.addEventListener('beforeprint', open); return () => window.removeEventListener('beforeprint', open); }, []);
+  useEffect(() => {
+    const expanded = new Set();
+    const prepare = () => {
+      for (const detail of document.querySelectorAll('details.fold:not([open])')) {
+        expanded.add(detail);
+        detail.open = true;
+      }
+    };
+    const restore = () => {
+      for (const detail of expanded) detail.open = false;
+      expanded.clear();
+    };
+    window.addEventListener('beforeprint', prepare);
+    window.addEventListener('afterprint', restore);
+    return () => {
+      window.removeEventListener('beforeprint', prepare);
+      window.removeEventListener('afterprint', restore);
+    };
+  }, []);
   const shareSummary = async () => {
     const lines = [`${g.name} — ${monthLabel(s.month)}${finalized ? '' : ' (খসড়া)'}`, `মোট বাজার: ${fmtMoney(rep.total, g)}`,
       ...(rep.settlements.length ? ['কে কাকে কত দেবেন:', ...rep.settlements.map((x) => `• ${x.from_name} → ${x.to_name}: ${fmtMoney(x.amount, g)}`)] : ['সবার হিসাব মিটেছে ✓'])];
@@ -145,14 +163,12 @@ export default function Report() {
       {s.isAdmin && !finalized && s.month === monthOf(today) ? <div className="section noprint">
         <h2>সমন্বয় ভুক্তি</h2>
         <p className="small muted">চূড়ান্ত হয়ে যাওয়া আগের মাসের ভুল সরাসরি বদলানো যায় না। এখানে চলতি মাসে একটি নিশ্চিত সমন্বয় যোগ করে দুজনের হিসাব শুধরে নিন।</p>
-        <button className="btn secondary" onClick={() => setAdjSheet(true)}>+ সমন্বয় যোগ করুন</button>
+        <button className="btn secondary" disabled={s.data.members.filter(m => !m.left_on).length < 2} onClick={() => setAdjSheet(true)}>+ সমন্বয় যোগ করুন</button>
       </div> : null}
 
       <div className="section noprint">
         {s.isAdmin && !finalized && monthEnded ? <Btn busy={busy} onClick={startFinalize}>এই মাসের হিসাব চূড়ান্ত করুন</Btn> : null}
         {s.isAdmin && !finalized && !monthEnded ? <p className="small muted center">মাস শেষ হলে অ্যাডমিন এখান থেকে হিসাব চূড়ান্ত করতে পারবেন।</p> : null}
-        <div style={{ marginTop: 10 }}><button className="btn secondary" onClick={() => window.print()}>প্রিন্ট / PDF হিসেবে সংরক্ষণ</button></div>
-        {!finalized ? <p className="small muted center">প্রিন্ট বাটনে চাপ দিয়ে “PDF হিসেবে সংরক্ষণ” বেছে নিন।</p> : null}
       </div>
 
       {paySheet ? <PaySheet init={paySheet} onClose={() => setPaySheet(null)} /> : null}
@@ -164,6 +180,7 @@ export default function Report() {
             {finSheet.pending_corrections > 0 ? <p>অমীমাংসিত সংশোধনের অনুরোধ: <b>{finSheet.pending_corrections}টি</b> (এগুলো বাতিল হয়ে যাবে)</p> : null}
             {finSheet.pending_payments > 0 ? <p>নিশ্চিত হয়নি এমন পরিশোধ: <b>{finSheet.pending_payments}টি</b> (এগুলো হিসাবে ধরা হবে না)</p> : null}
           </div>
+          {pendingCorr.map(c => <p key={c.id} className="small break"><b>{KIND[c.kind]}</b> · {c.requested_by_name} · {c.description || c.old?.description}{c.reason && ` · ${c.reason}`}</p>)}
           {rep.payments.filter((p) => p.status === 'pending').map((p) => <div key={p.id} className="small" style={{ marginTop: 6 }}>{p.from_name} → {p.to_name}: {fmtMoney(p.amount, g)}</div>)}
           <p className="small muted">প্রাপকদের আগে নিশ্চিত করতে বলা বা অনুরোধগুলো নিষ্পত্তি করাই ভালো। চাইলে এখনই চূড়ান্ত করতে পারেন।</p>
           <div className="btn-row"><button className="btn secondary" onClick={() => setFinSheet(null)}>আগে ঠিক করি</button><Btn busy={busy} className="danger" onClick={forceFinalize}>তবুও চূড়ান্ত করুন</Btn></div>
@@ -282,7 +299,7 @@ function AdjustSheet({ onClose }) {
   const submit = (e) => {
     e.preventDefault();
     const a = parseMoney(amt, dec);
-    if (from === to) return toast('দুজন আলাদা সদস্য বেছে নিন।', true);
+    if (!from || !to || from === to) return toast('দুজন আলাদা সদস্য বেছে নিন।', true);
     if (!a || a <= 0) return toast('টাকার পরিমাণ লিখুন।', true);
     if (!why.trim()) return toast('কারণ লিখুন।', true);
     run(async () => { await rpc('add_adjustment', { p_group: s.gid, p_token: token, p_from: from, p_to: to, p_amount: a, p_reason: why.trim() }); await s.reloadGroup(); onClose(); }, 'সমন্বয় যোগ হয়েছে।');

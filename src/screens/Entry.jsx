@@ -1,3 +1,4 @@
+import { MEMBER_DOMAIN } from './MemberCredentials.jsx';
 import { captchaToken } from '../lib/captcha.js';
 import React, { useEffect, useState } from 'react';
 import { supabase, rpc, errText } from '../lib/supabase.js';
@@ -88,7 +89,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
         if (error) throw new Error(errText(error));
         if (!data.session) { setMode('verify'); setPw(''); setInfo('আপনার ইমেইলে একটি নিশ্চিতকরণ লিংক পাঠানো হয়েছে। লিংকে ক্লিক করে তারপর খাতায় ফিরে আসুন।'); }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pw, options: { captchaToken: await captchaToken() } });
+        const { error } = await supabase.auth.signInWithPassword({ email: returning && !email.includes('@') ? email.trim().toLowerCase()+MEMBER_DOMAIN : email.trim(), password: pw, options: { captchaToken: await captchaToken() } });
         if (error) throw new Error(errText(error));
       }
     });
@@ -113,7 +114,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
           <button type="button" className={mode === 'up' ? 'on' : ''} onClick={() => switchMode('up')}>নতুন অ্যাকাউন্ট</button>
         </div>}
         {mode === 'up' ? <Field label="আপনার নাম"><input type="text" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required /></Field> : null}
-        <Field label="ইমেইল"><input type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required /></Field>
+        <Field label={returning && mode === 'in' ? "ইউজারনেম বা ইমেইল" : "ইমেইল"}><input type={returning && mode === 'in' ? "text" : "email"} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required /></Field>
         {mode !== 'forgot' && <Field label="পাসওয়ার্ড" hint={mode === 'up' ? 'অন্তত ৬ অক্ষর' : undefined}>
           <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete={mode === 'up' ? 'new-password' : 'current-password'} required minLength={6} />
         </Field>}
@@ -213,7 +214,7 @@ export function Account() {
   return <main className="app no-nav"><section className="card stack"><h2>আমার অ্যাকাউন্ট</h2>
     <p>{s.profile?.name}</p><p>{s.session.user.email}</p>
     {s.session.user.email && <a className="btn secondary" href="#/recover">পাসওয়ার্ড বদলান</a>}
-    {!s.session.user.email && <AddEmail />}
+    {!s.session.user.email && <a className="btn" href="#/member-setup">ইউজারনেম ও পাসওয়ার্ড তৈরি করুন</a>}
     <Btn busy={busy} onClick={() => run(async () => {const {error} = await supabase.auth.signOut({scope:'local'}); if(error) throw error; go('#/');})}>সাইন আউট</Btn>
     <Btn busy={busy} className="danger secondary" onClick={delAccount}>আমার অ্যাকাউন্ট মুছে ফেলুন</Btn>
     <a href="#/">ফিরে যান</a></section>{confirmNode}</main>;

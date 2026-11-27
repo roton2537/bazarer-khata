@@ -1,3 +1,4 @@
+import { MemberCredentials } from './screens/MemberCredentials.jsx';
 import React, { useEffect, useState } from 'react';
 import { supabase, configured } from './lib/supabase.js';
 import { ToastProvider, Spinner } from './ui.jsx';
@@ -82,6 +83,7 @@ function Root() {
 
 function Authed({ hash, invite }) {
   const s = useStore();
+  if (hash === '#/member-setup' && !s.session.user.email) return <MemberCredentials onDone={() => go('#/')} />;
   if (hash === '#/account') return <Account />;
   if (s.error && (!s.memberships || !s.data)) return <main className="app no-nav"><section className="card stack" role="alert"><h1>খাতা লোড করা যায়নি</h1><p>{s.error}</p><button className="btn" disabled={s.loading} onClick={() => s.refresh().catch(() => {})}>আবার চেষ্টা করুন</button><a href="#/account">আমার অ্যাকাউন্ট</a></section></main>;
   if (!s.memberships) return <div className="app no-nav center"><Spinner /></div>;

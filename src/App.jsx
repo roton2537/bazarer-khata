@@ -31,7 +31,7 @@ export default function App() {
 
 function SetupMissing() {
   return (
-    <div className="app no-nav"><div className="brand"><h1>{t("বাজারের খাতা")}</h1></div>
+    <div className="app no-nav"><div className="brand"><h1>MessMate</h1></div>
       <div className="banner red">Supabase সংযোগ সেট করা নেই। <code>VITE_SUPABASE_URL</code> ও <code>VITE_SUPABASE_ANON_KEY</code> পরিবেশ-ভেরিয়েবল দিয়ে আবার বিল্ড করুন।</div></div>
   );
 }
@@ -101,7 +101,7 @@ function Authed({ hash, invite }) {
   if (!s.memberships) return <div className="app no-nav center"><Spinner /></div>;
   if (invite) return <Invite key={invite} code={invite} />;
   if (!s.memberships.length && hash === '#/open') return <main className="kh-welcome kh-new">
-    <header><img src="/icon.svg" alt="" width="32" height="32" />{t("বাজারের খাতা")}</header>
+    <header><img src="/icon.svg" alt="" width="32" height="32" />MessMate</header>
     <section className="kh-new-body card stack"><h1>{t("আমার খাতা")}</h1>
       <p>{t("এই অ্যাকাউন্টে এখনও কোনো খাতা নেই। নতুন খাতা তৈরি করুন অথবা সদস্য হিসেবে অ্যাডমিনের আমন্ত্রণ লিংক খুলুন।")}</p>
       <a className="btn" href="#/create">{t("নতুন খাতা তৈরি করুন")}</a>

@@ -1,5 +1,5 @@
 // Keep only the public app shell/assets offline. Never cache Supabase data or Auth requests.
-const SHELL = 'khai-khai-shell-v1';
+const SHELL = 'khai-khai-shell-v2';
 const SHELL_PREFIX = 'khai-khai-shell-';
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
@@ -44,7 +44,7 @@ self.addEventListener('fetch', event => {
 self.addEventListener('push', event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { /* malformed push */ }
-  event.waitUntil(self.registration.showNotification(data.title || 'KHAI KHAI', {
+  event.waitUntil(self.registration.showNotification(data.title || 'MessMate', {
     body: data.body || '', icon: '/icon.svg', badge: '/icon.svg', data: {url: data.url || '/'}, tag: data.tag,
   }));
 });

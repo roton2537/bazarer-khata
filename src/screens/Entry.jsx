@@ -15,7 +15,7 @@ function Brand() {
   return (
     <div className="brand"><LanguagePicker />
       <img className="logo" src="/icon.svg" alt="" />
-      <h1 className="khai-wordmark">KHAI KHAI</h1><p className="khai-entry-label">{t("বাজারের খাতা")}</p>
+      <h1 className="khai-wordmark">MessMate</h1><p className="khai-entry-label">{t("বাজারের খাতা")}</p>
       <p className="muted">{t("একসঙ্গে থাকলে বাজারের হিসাব সবার কাছে পরিষ্কার")}</p>
     </div>
   );
@@ -29,7 +29,7 @@ function emailReturn(intent) {
 
 export function Welcome({ signedIn }) {
   return <main className="kh-welcome"><LanguagePicker />
-    <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">KHAI KHAI</strong><span className="khai-entry-label">{t("বাজারের খাতা")}</span></header>
+    <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">MessMate</strong><span className="khai-entry-label">{t("বাজারের খাতা")}</span></header>
     <div className="kh-layout">
       <div className="kh-art" aria-hidden="true"><div className="kh-cover" /><div className="kh-slip"><strong>{t("বাজারের খাতা")}</strong></div></div>
       <section className="kh-intro">
@@ -94,7 +94,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
 
   return (
     <main className={(create || returning) ? 'kh-welcome kh-new kh-admin' : 'app no-nav'}>
-      {(create || returning) ? <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">KHAI KHAI</strong><a href="#/">{t("← ফিরে যান")}</a></header> : <Brand />}
+      {(create || returning) ? <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">MessMate</strong><a href="#/">{t("← ফিরে যান")}</a></header> : <Brand />}
       <div className={(create || returning) ? 'kh-new-body' : undefined}>
       {invite && <div className="banner green">{group.name ? 'আমন্ত্রণ · ' + group.name : group.error || 'আমন্ত্রণ দেখা হচ্ছে…'}</div>}
       {returning && <><h1>{t("আমার খাতা খুলুন")}</h1><p className="kh-admin-intro">{t("সদস্য হলে ইউজারনেম, অ্যাডমিন হলে ইমেইল দিয়ে প্রবেশ করুন।")}</p></>}
@@ -141,7 +141,7 @@ export function Onboarding({user}) {
     });
   };
   return <main className="kh-welcome kh-new">
-    <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">KHAI KHAI</strong>
+    <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">MessMate</strong>
       <a href="#/">{t("← ফিরে যান")}</a>
     </header>
     <div className="kh-new-body">

@@ -57,7 +57,7 @@ export function Header({ title }) {
     <header className="topbar">
       <div className="eyebrow">{title || t("বাজারের খাতা")}</div>
       <div className="khai-masthead">
-        <h1 className="khai-wordmark">KHAI KHAI</h1>
+        <h1 className="khai-wordmark">MessMate</h1>
         {s.memberships.length <= 1 && <span className="khai-groupname">{s.group.name}</span>}
       </div>
       {s.memberships.length > 1 && <div className="khai-group-picker">

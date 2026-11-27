@@ -35,7 +35,7 @@ export function AcceptLink({ token }) {
     return () => { active = false; };
   }, [token]);
   return <main className="app no-nav"><section className="card stack">
-    <h1>{record?.group_name || t("বাজারের খাতা")}</h1>
+    <h1>{record?.group_name || "MessMate"}</h1>
     {error ? <p role="alert">{error}</p> : !record ? <p>{t("লিংক যাচাই হচ্ছে…")}</p> :
       <form onSubmit={e => { e.preventDefault(); run(async () => {
         await deviceSession();

@@ -58,8 +58,8 @@ export function Header({ title }) {
       <div className="eyebrow">{title || t("বাজারের খাতা")}</div>
       <div className="khai-masthead">
         <h1 className="khai-wordmark">MessMate</h1>
-        {s.memberships.length <= 1 && <span className="khai-groupname">{s.group.name}</span>}
       </div>
+      {s.memberships.length <= 1 && <div className="khai-groupname">{s.group.name}</div>}
       {s.memberships.length > 1 && <div className="khai-group-picker">
         <select aria-label={t("গ্রুপ বদলান")} value={s.gid} onChange={e => {s.setGid(e.target.value); go('#/');}}>
           {s.memberships.map(m => <option key={m.group_id} value={m.group_id}>{m.groups.name}</option>)}

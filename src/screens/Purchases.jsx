@@ -137,9 +137,9 @@ export function PurchaseForm({ editId }) {
 
   return (
     <div className="app no-nav">
-      <div className="topbar"><div className="row"><button className="monthbar nb" style={{ width: 44, height: 44, borderRadius: 50, border: '1.5px solid var(--line)', background: 'var(--card)', color: 'var(--green)', fontSize: 20 }} onClick={() => go(editing ? '#/list' : '#/')} aria-label={t("ফিরে যান")}>←</button><h1 className="grow">{editing ? t("বাজার সংশোধন") : t("বাজার যোগ করুন")}</h1></div></div>
+      <div className="topbar form-header"><div className="row"><button className="monthbar nb" style={{ width: 44, height: 44, borderRadius: 50, border: '1.5px solid var(--line)', background: 'var(--card)', color: 'var(--green)', fontSize: 20 }} onClick={() => go(editing ? '#/list' : '#/')} aria-label={t("ফিরে যান")}>←</button><h1 className="grow">{editing ? t("বাজার সংশোধন") : t("বাজার যোগ করুন")}</h1></div></div>
       <form className="card" onSubmit={submit}>
-        {items.map((it,i) => <div className="row" key={it.token} style={{marginBottom:10,alignItems:'end'}}>
+        {items.map((it,i) => <div className="row product-entry-row" key={it.token} style={{marginBottom:10,alignItems:'end'}}>
           <div className="grow"><Field label={t("পণ্যের নাম")}><input required maxLength={legacyItems || !editing ? 100 : 200} value={it.name} onChange={e=>setItem(i,'name',e.target.value)} placeholder={t("চাল")} /></Field></div>
           <div style={{width:'32%',minWidth:0}}><Field label={t("দাম")}><input required inputMode="decimal" value={it.amount} onChange={e=>setItem(i,'amount',e.target.value)} placeholder={t("০")} /></Field></div>
           {items.length>1 && <button type="button" className="btn small secondary" aria-label={t("পণ্য সরান")} onClick={()=>setItems(a=>a.filter((_,j)=>j!==i))}>×</button>}

@@ -64,8 +64,7 @@ export default function Report() {
   return (
     <>
       <Header title={t("মাসিক রিপোর্ট")} />
-      <ProductReport />
-      <div className="card khai-report-summary" style={{ marginTop: 12 }}>
+      <div className="card khai-report-summary report-overview" style={{ marginTop: 12 }}>
         <div className="row between"><h2 className="break">{printName}</h2></div>
         <div className="row between" style={{ marginTop: 6 }}><span className="muted">{t("মোট বাজার")}</span><b style={{ fontSize: 22 }}>{fmtMoney(rep.total, g)}</b></div>
         <div className="khai-outstanding"><div>{t("এখনো বাকি: ")}{fmtMoney(outstanding, g)}</div><div className="small muted">{outstanding ? t("পরিশোধ প্রাপক নিশ্চিত করলে অবশিষ্ট হিসাব কমবে।") : t("সব হিসাব মিটেছে ✓")}</div></div>
@@ -105,6 +104,7 @@ export default function Report() {
         ))}
       </details>
 
+      <ProductReport />
       {rep.payments.length > 0 ? (
         <div className="section">
           <h2>{t("পরিশোধের তালিকা")}</h2>

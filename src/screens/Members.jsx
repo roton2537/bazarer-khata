@@ -6,7 +6,7 @@ import { Btn, Field, Sheet, Tag, useAction, useConfirm, useToast } from '../ui.j
 import { dateLabel, dayLabel, todayDhaka, monthOf, toBnDigits } from '../lib/format.js';
 import { enablePush, disablePush, pushSupported } from '../lib/push.js';
 import { go } from '../App.jsx';
-import { Avatar, Header } from './parts.jsx';
+import { Avatar, Header, LanguagePicker } from './parts.jsx';
 
 export default function Members({ view = 'members' }) {
   const s = useStore(); const g = s.group; const toast = useToast();
@@ -72,6 +72,7 @@ export default function Members({ view = 'members' }) {
       </>}
 
       {view === 'settings' && <>
+      <div className="card settings-language"><h2>{t('ভাষা')}</h2><LanguagePicker /></div>
 
       {s.isActive ? (
         <div className="card">
@@ -97,7 +98,7 @@ export default function Members({ view = 'members' }) {
 
       <div className="card">
         <h2>{t("খাতা ও অ্যাকাউন্ট")}</h2>
-        <p className="small muted">{s.session.user.email?.replace('@members.bazarer-khata.invalid','') || s.me?.display_name}</p>
+        <div className="row settings-profile"><Avatar name={s.profile?.name||s.me?.display_name||'?'} photo={s.profile?.avatar_data}/><div className="grow break"><b>{s.profile?.name||s.me?.display_name}</b><div className="small muted">{s.session.user.email?.replace('@members.bazarer-khata.invalid','')}</div></div></div>
         <div className="stack" style={{ marginTop: 8 }}>
           {s.isAdmin && others.length > 0 ? <button className="btn secondary" onClick={() => setTransferSheet('transfer')}>{t("অ্যাডমিনের দায়িত্ব অন্যকে দিন")}</button> : null}
           <button className="btn secondary" onClick={() => go('#/new-group')}>{t("+ আরেকটি গ্রুপ খুলুন বা যোগ দিন")}</button>

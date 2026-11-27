@@ -2,7 +2,7 @@ import { t } from '../lib/language.js';
 import React, { useEffect, useState } from 'react';
 import { useStore } from '../store.jsx';
 import { timeAgo } from '../lib/format.js';
-import { Empty } from './parts.jsx';
+import { Empty, Header } from './parts.jsx';
 
 export default function Feed() {
   const s = useStore();
@@ -12,7 +12,7 @@ export default function Feed() {
   const ev = s.data.events.filter((e) => (f === 'all' ? true : f === 'pay' ? isPay(e) : e.actor_id === s.me?.id));
   return (
     <>
-      <div className="topbar"><div className="eyebrow">{t("গ্রুপের সর্বশেষ খবর")}</div><h1 className="break feed-title">{s.group.name}</h1></div>
+      <Header title={t("খবর")} />
       <div className="seg three" role="group" aria-label={t("খবরের ধরন")}>
         {[['all', t("সব")], ['pay', t("পরিশোধ")], ['mine', t("আমার")]].map(([k, l]) => <button key={k} aria-pressed={f === k} className={f === k ? 'on' : ''} onClick={() => setF(k)}>{l}</button>)}
       </div>

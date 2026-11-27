@@ -40,7 +40,7 @@ function chain(table) {
 }
 export const supabase = {
   from: chain,
-  auth: { getSession: async () => ({ data: { session: AS === 'guest' ? null : { user: { id: UID, email: ME + '@example.com' } } } }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }), signOut: async () => {} },
+  auth: { getSession: async () => ({ data: { session: AS === 'guest' ? null : { user: { id: UID, email: ME + '@example.com' } } } }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }), signOut: async () => {}, updateUser: async ({data})=>({data:{user:{id:UID,email:ME+'@example.com',user_metadata:data}},error:null}) },
   channel: () => ({ on() { return this; }, subscribe() { return this; } }), removeChannel() {}, rpc: async () => ({ data: null, error: null }),
 };
 const day = 864e5;
@@ -50,6 +50,8 @@ const accessLinks = [
   { token: 'bbbbbbbb-2222-4333-8444-555555555555', label: 'করিম', purpose: 'restore', expires_at: new Date(Date.now() + 5 * 36e5).toISOString() },
 ];
 export async function rpc(name, args = {}) {
+  if (name === 'set_my_photo') {T.profiles.avatar_data=args.p_photo;return null;}
+  if (name === 'group_photos') return Object.fromEntries(members.filter(m=>m.user_id===UID && T.profiles.avatar_data).map(m=>[m.id,T.profiles.avatar_data]));
   if (name === 'pending_access_links') return AS === 'member' ? [] : [...accessLinks];
   if (name === 'issue_access_link') {
     const token = crypto.randomUUID();

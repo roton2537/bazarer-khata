@@ -50,7 +50,7 @@ export function PurchaseList() {
               <div className="item">
                 <button type="button" className="row purchase-toggle" aria-expanded={open === p.id} onClick={() => { setOpen(open === p.id ? null : p.id); if (open !== p.id) loadHistory(p.id); }}>
                   <Avatar name={nameOf(p.buyer_id)} id={p.buyer_id} />
-                  <span className="grow"><span className="t break">{p.description}</span><small className="muted">ক্রেতা: {nameOf(p.buyer_id)}</small></span>
+                  <span className="grow"><span className="t break" style={{whiteSpace: 'pre-line'}}>{p.description}</span><small className="muted">ক্রেতা: {nameOf(p.buyer_id)}</small></span>
                   <span className="amt">{fmtMoney(p.amount, g)}</span>
                   <span aria-hidden="true">{open === p.id ? "−" : "+"}</span>
                 </button>
@@ -120,10 +120,15 @@ export function PurchaseForm({ editId }) {
     if (!amount || amount <= 0) return toast('খরচের টাকা লিখুন।', true);
     if (!validItems) return toast('প্রতিটি আইটেমের নাম ও টাকা দিন।', true);
     run(async () => {
+      const names = desc.split(/\r?\n/).map(line => line.trim()).filter(Boolean).join('\n');
+      const oldNames = editing?.purchase_items.map(i => i.name) || [];
+      const shortTitle = value => Array.from(value).slice(0, 200).join('');
+      const customTitle = oldNames.length && !['\n', ', '].some(separator => shortTitle(oldNames.join(separator)) === editing.description);
+      const description = mode === 'total' ? names : customTitle ? editing.description : shortTitle(itemsMinor.map(i => i.name).join('\n'));
       const payload = mode === 'items' ? itemsMinor : [];
-      if (editing) await rpc('update_purchase', { p_id: editing.id, p_date: date, p_buyer: s.me.id, p_desc: desc, p_amount: amount, p_items: payload });
+      if (editing) await rpc('update_purchase', { p_id: editing.id, p_date: date, p_buyer: s.me.id, p_desc: description, p_amount: amount, p_items: payload });
       else {
-        await rpc('add_purchase', { p_group: s.gid, p_token: token.current, p_date: date, p_buyer: s.me.id, p_desc: desc, p_amount: amount, p_items: payload });
+        await rpc('add_purchase', { p_group: s.gid, p_token: token.current, p_date: date, p_buyer: s.me.id, p_desc: description, p_amount: amount, p_items: payload });
       }
       await s.reloadGroup(); go('#/');
       toast(editing ? 'সংশোধন সংরক্ষিত হয়েছে।' : 'বাজার যোগ হয়েছে।');
@@ -139,7 +144,9 @@ export function PurchaseForm({ editId }) {
     <div className="app no-nav">
       <div className="topbar"><div className="row"><button className="monthbar nb" style={{ width: 44, height: 44, borderRadius: 50, border: '1.5px solid var(--line)', background: 'var(--card)', color: 'var(--green)', fontSize: 20 }} onClick={() => go(editing ? '#/list' : '#/')} aria-label="ফিরে যান">←</button><h1 className="grow">{editing ? 'বাজার সংশোধন' : 'বাজার যোগ করুন'}</h1></div></div>
       <form className="card" onSubmit={submit}>
-        <Field label="কী কিনেছেন"><input type="text" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="যেমন: চাল, ডাল, তেল" maxLength={200} autoFocus={!editing} /></Field>
+        {mode === 'total' && <Field label="পণ্যের নাম" hint="প্রতি লাইনে একটি পণ্যের নাম লিখুন।">
+          <textarea rows={3} value={desc} onChange={e => setDesc(e.target.value)} placeholder={'চাল\nডাল\nতেল'} maxLength={200} required autoFocus={!editing} />
+        </Field>}
         <div className="seg" style={{ marginTop: 14 }}>
           <button type="button" className={mode === 'total' ? 'on' : ''} onClick={() => setMode('total')}>শুধু মোট টাকা</button>
           <button type="button" className={mode === 'items' ? 'on' : ''} onClick={() => setMode('items')}>আলাদা আলাদা দাম</button>

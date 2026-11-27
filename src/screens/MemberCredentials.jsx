@@ -22,6 +22,7 @@ export function MemberCredentials({ onDone, legacy = false }) {
       if (error) throw new Error('আগের সেশনে প্রবেশ করা যায়নি।');
       onDone();
     })}>{t("আগের সদস্য সেশন খুলুন")}</Btn>
+    <a className="btn secondary" href="#/device-recovery">{t('পুরোনো সদস্যের খাতা ফেরত নিন')}</a>
     <a href="#/open">{t("ইউজারনেম দিয়ে প্রবেশ করুন")}</a>
   </section></main>;
   return <main className="app no-nav"><form className="card stack" onSubmit={e => {

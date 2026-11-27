@@ -1,3 +1,4 @@
+import { ApproveDevice } from './DeviceRecovery.jsx';
 import { t } from '../lib/language.js';
 import React, { useEffect, useState } from 'react';
 import { rpc, supabase } from '../lib/supabase.js';
@@ -68,6 +69,7 @@ export default function Members({ view = 'members' }) {
         ))}
       </div>
 
+      {s.isAdmin && <ApproveDevice key={'recovery-'+s.gid} group={g} members={s.data.members} />}
       {s.isAdmin && <AdminInvite key={s.gid} group={g} members={s.data.members} />}
       </>}
 

@@ -5,6 +5,19 @@ let current = 'bn';
 export function setCurrentLanguage(language){current=language==='en'?'en':'bn';}
 export function language(){return current;}
 const english = {
+"অনুমোদন পাওয়া যায়নি। কোডের মেয়াদ শেষ হলে আবার কোড নিন।":"No approval yet. If the code expired, request a code again.",
+"পুরোনো সদস্যের খাতা ফেরত নিন":"Recover an existing ledger",
+"নিজের নতুন ফোনে কোড নিন। গ্রুপের অ্যাডমিনকে সরাসরি কোড দেখিয়ে নিজের নামটি নিশ্চিত করুন।":"Get a code on your new phone. Show it to your group admin in person and confirm your member name.",
+"কোড ১০ মিনিট কার্যকর। এই পাতা খোলা রাখুন।":"The code lasts 10 minutes. Keep this page open.",
+"এটি আমার হিসাব — ফেরত নিন":"This is my account — restore access",
+"অনুমোদন দেখুন":"Check approval",
+"ফোনের কোড নিন":"Get device code",
+"অনুমোদন হয়েছে। সদস্য নিজের ফোনে অনুমোদন দেখে পিন তৈরি করবেন।":"Approved. The member can now check approval and set a PIN on their phone.",
+"পুরোনো সদস্যের ফোন অনুমোদন":"Approve an existing member’s phone",
+"সদস্যকে সরাসরি চিনে তাঁর ফোনের কোড মিলিয়ে নিন। যে সদস্যের এখনও ইউজারনেম নেই, তালিকায় তাঁর আগের নাম বাছুন।":"Verify the member in person and match the code on their phone. Select their original name. Only members without a username are eligible.",
+"সদস্য বাছুন":"Choose a member",
+"সদস্যের ফোনের কোড":"Member’s device code",
+"এই ফোন অনুমোদন করুন":"Approve this phone",
 "পিন":"PIN",
 "৮ থেকে ১২টি সংখ্যা দিন।":"Enter 8 to 12 digits.",
 "পিন আবার লিখুন":"Confirm PIN",

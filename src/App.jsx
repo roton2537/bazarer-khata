@@ -11,6 +11,7 @@ import Home from './screens/Home.jsx';
 import { PurchaseList, PurchaseForm } from './screens/Purchases.jsx';
 import Report from './screens/Report.jsx';
 import Feed from './screens/Feed.jsx';
+import { RecoverDevice } from './screens/DeviceRecovery.jsx';
 import Members from './screens/Members.jsx';
 import { Icon, Skeleton } from './screens/parts.jsx';
 
@@ -76,6 +77,7 @@ function Routes({session,authError,hash}){
   if (authError) return <main className="app no-nav"><section className="card stack" role="alert"><h1>{t("সংযোগে সমস্যা")}</h1><p>{authError}</p><button className="btn" onClick={() => window.location.reload()}>{t("আবার চেষ্টা করুন")}</button></section></main>;
   if (emailIntent) return <Spinner />;
   const token = hash.match(/^#\/access\/([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/i)?.[1];
+  if (hash === '#/device-recovery') return <RecoverDevice />;
   if (token) return <AcceptLink key={token} token={token} />;
   if (hash === '#/restore') return <OpenLedger signedIn={!!session} />;
   if (hash === '#/open' && !session) return <AuthScreen key="open" returning />;

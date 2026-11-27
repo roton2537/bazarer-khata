@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, rpc, q } from './lib/supabase.js';
-import { todayDhaka, monthOf } from './lib/format.js';
+import { todayDhaka, monthOf, addMonths } from './lib/format.js';
 import { useToast } from './ui.jsx';
 
 const Ctx = createContext(null);
@@ -10,7 +10,7 @@ export function StoreProvider({ session, children }) {
   const uid = session.user.id;
   const toast = useToast();
   const [memberships, setMemberships] = useState(null);       // আমার সব সদস্যপদ (গ্রুপসহ)
-  const [gid, setGidState] = useState(() => localStorage.getItem('bk_gid') || null);
+  const [gid, setGid] = useState(() => new URLSearchParams(location.search).get('ledger'));
   const [month, setMonth] = useState(monthOf(todayDhaka()));
   const [loaded, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -37,13 +37,12 @@ export function StoreProvider({ session, children }) {
     return list;
   }, [uid]);
 
-  const setGid = useCallback((id) => { setGidState(id); if (id) localStorage.setItem('bk_gid', id); }, []);
 
   const loadGroup = useCallback(async (g, m) => {
     const my = ++seq.current;
     setLoading(true); setError('');
     try {
-      const [members, pauses, purchases, report, months, corrections, events, payRows] = await Promise.all([
+      const [members, pauses, purchases, report, months, corrections, events, payRows, closures] = await Promise.all([
         q(supabase.from('members').select('*').eq('group_id', g).order('seq')),
         q(supabase.from('pauses').select('*').eq('group_id', g)),
         q(supabase.from('purchases').select('*, purchase_items(*), purchase_shares(*)').eq('group_id', g).eq('month', m)
@@ -53,10 +52,11 @@ export function StoreProvider({ session, children }) {
         rpc('list_corrections', { p_group: g, p_month: m }),
         q(supabase.from('events').select('*').eq('group_id', g).order('created_at', { ascending: false }).limit(80)),
         q(supabase.from('payments').select('id,kind,note,reminded_at').eq('group_id', g).eq('month', m)),
+        q(supabase.from('closed_dates').select('ledger_date,report').eq('group_id',g).gte('ledger_date',m).lt('ledger_date',addMonths(m,1)).order('ledger_date',{ascending:false})),
       ]);
       const paymentMeta = Object.fromEntries((payRows || []).map((r) => [r.id, r]));
       if (my !== seq.current) return;
-      setData({ members, pauses, purchases, report, months, corrections, events, paymentMeta, gid: g, month: m });
+      setData({ members, pauses, purchases, report, months, corrections, events, paymentMeta, closures, gid: g, month: m });
     } catch (e) { if (my === seq.current) { setError(e.message); toast(e.message, true); } }
     finally { if (my === seq.current) setLoading(false); }
   }, [toast]);
@@ -104,22 +104,12 @@ export function StoreProvider({ session, children }) {
   const myRow = data?.report?.members?.find((m) => m.id === me?.id) || null;
 
   // খবর: কোনটি আমি দেখিনি (এই ডিভাইসে শেষ দেখার সময় ধরে)
-  const [seenTick, setSeenTick] = useState(0);
-  const seenKey = `bk_seen_${gid}`;
-  const unread = useMemo(() => {
-    if (!data || !me) return 0;
-    let seen = ''; try { seen = localStorage.getItem(seenKey) || ''; } catch { /* */ }
-    if (!seen) return 0;   // প্রথমবার: সবকিছুকে "না-পড়া" দেখানো হয় না
-    return data.events.filter((e) => e.created_at > seen && e.actor_id !== me.id).length;
-  }, [data, me, seenKey, seenTick]);
-  const markFeedSeen = useCallback(() => {
-    try { localStorage.setItem(seenKey, new Date().toISOString()); } catch { /* */ }
-    setSeenTick((n) => n + 1);
-  }, [seenKey]);
-
-  useEffect(() => { // প্রথমবার খুললে বর্তমান খবরগুলো "দেখা" ধরা হয়
-    try { if (data && me && !localStorage.getItem(seenKey)) markFeedSeen(); } catch { /* */ }
-  }, [data, me, seenKey, markFeedSeen]);
+  const [seen, setSeen] = useState({});
+  const markFeedSeen = useCallback(() => setSeen(current => ({ ...current, [gid]: new Date().toISOString() })), [gid]);
+  useEffect(() => {
+    if (data && !seen[gid]) markFeedSeen();
+  }, [gid, data, seen, markFeedSeen]);
+  const unread = data?.events.filter(e => seen[gid] && e.created_at > seen[gid] && e.actor_id !== me?.id).length || 0;
 
   const value = { unread, markFeedSeen, session, uid, profile, memberships, gid, setGid, group, month, setMonth, data, loading, error, refresh, me, isAdmin, isActive, myRow, reloadGroup: () => loadGroup(gid, month) };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

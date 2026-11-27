@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { rpc } from '../lib/supabase.js';
+import { rpc, supabase } from '../lib/supabase.js';
 import { useStore } from '../store.jsx';
 import { Btn, Field, Sheet, Tag, useAction, useConfirm, useToast } from '../ui.jsx';
 import { dateLabel, dayLabel, todayDhaka, monthOf, toBnDigits } from '../lib/format.js';
@@ -46,7 +46,7 @@ export default function Members({ view = 'members' }) {
     const ok = await ask({ title: 'পুরো গ্রুপ মুছে ফেলবেন?',
       body: `“${g.name}” গ্রুপের সব বাজার, ভাগ, পরিশোধ, মাসিক রিপোর্ট ও খবর সবার জন্য চিরতরে মুছে যাবে। এটি আর ফেরানো যাবে না।\nআগে দরকারি রিপোর্ট প্রিন্ট বা PDF করে রাখতে পারেন।`,
       confirmText: 'চিরতরে মুছুন', danger: true, requireText: g.name });
-    if (ok) run(async () => { await rpc('delete_group', { p_group: s.gid }); localStorage.removeItem('bk_gid'); await s.refresh(); go('#/'); }, 'গ্রুপ মুছে ফেলা হয়েছে।');
+    if (ok) run(async () => { await rpc('delete_group', { p_group: s.gid }); await s.refresh(); go('#/'); }, 'গ্রুপ মুছে ফেলা হয়েছে।');
   };
 
   return (
@@ -96,11 +96,16 @@ export default function Members({ view = 'members' }) {
 
       <div className="card">
         <h2>খাতা ও অ্যাকাউন্ট</h2>
-        <p className="small muted">{s.session.user.email || s.me?.display_name}</p>
+        <p className="small muted">{s.session.user.email?.replace('@members.bazarer-khata.invalid','') || s.me?.display_name}</p>
         <div className="stack" style={{ marginTop: 8 }}>
           {s.isAdmin && others.length > 0 ? <button className="btn secondary" onClick={() => setTransferSheet('transfer')}>অ্যাডমিনের দায়িত্ব অন্যকে দিন</button> : null}
           <button className="btn secondary" onClick={() => go('#/new-group')}>+ আরেকটি গ্রুপ খুলুন বা যোগ দিন</button>
           <button className="btn secondary" onClick={() => go('#/account')}>আমার অ্যাকাউন্ট</button>
+          <Btn busy={busy} className="secondary" onClick={() => run(async () => {
+            const {error} = await supabase.auth.signOut({scope:'local'});
+            if (error) throw error;
+            go('#/');
+          })}>লগআউট</Btn>
         </div>
       </div>
 
@@ -180,10 +185,9 @@ function expiryLabel(iso) {
   return d > 0 ? `আর ${toBnDigits(d)} দিন` : `আর ${toBnDigits(h)} ঘণ্টা`;
 }
 
-function AdminInvite({group, members}) {
+function AdminInvite({group}) {
   const [label,setLabel] = useState('');
   const [links,setLinks] = useState([]);
-  const [showCode,setShowCode] = useState(false);
   const [busy,run] = useAction();
   const [ask,confirmNode] = useConfirm();
   const load = () => rpc('pending_access_links', {p_group:group.id});
@@ -192,8 +196,8 @@ function AdminInvite({group, members}) {
     run(async () => { const rows = await load(); if (active) setLinks(rows); });
     return () => { active = false; };
   }, [group.id]);
-  const issue = (target = null) => run(async () => {
-    await rpc('issue_access_link', {p_group:group.id,p_target:target,p_label:label});
+  const issue = () => run(async () => {
+    await rpc('issue_access_link', {p_group:group.id,p_target:null,p_label:label});
     setLinks(await load()); setLabel('');
   });
   async function cancel(row) {
@@ -201,19 +205,13 @@ function AdminInvite({group, members}) {
     run(async () => { await rpc('cancel_access_link', {p_group:group.id,p_token:row.token}); setLinks(await load()); });
   }
   return <section className="card stack"><h2>সদস্য যোগ করুন</h2>
+    <p className="small muted">প্রতিটি লিংক একজন নতুন সদস্য একবার ব্যবহার করতে পারবেন।</p>
     <form onSubmit={e => { e.preventDefault(); issue(); }}>
       <Field label="সদস্যের নাম"><input type="text" required maxLength={100} placeholder="যেমন: নাসির" value={label} onChange={e => setLabel(e.target.value)} /></Field>
       <Btn busy={busy}>আমন্ত্রণ লিংক তৈরি করুন</Btn>
     </form>
-    {members.filter(m => !m.left_on && m.role === 'member').map(m =>
-      <div className="row between" key={m.id}><span>{m.display_name}</span>
-        <Btn busy={busy} className="secondary small" onClick={() => issue(m.id)}>নতুন ফোনের লিংক তৈরি করুন</Btn></div>)}
     {links.map(row => {
       const link = window.location.origin + '/#/access/' + row.token;
-      if (row.purpose === 'backup') return <div className="stack" key={row.token}><h3>অ্যাডমিনের রিকভারি কোড</h3>
-        <p>ফোন বদলালে খাতা ফেরত পেতে কোডটি ব্যক্তিগতভাবে সংরক্ষণ করুন। এই কোডের মেয়াদ নেই, তাই অন্য কারও সঙ্গে শেয়ার করবেন না।</p>
-        <Btn className="secondary" onClick={() => setShowCode(!showCode)}>{showCode ? 'কোড লুকান' : 'রিকভারি কোড দেখুন'}</Btn>
-        {showCode && <><code className="break">{row.token}</code><Btn onClick={() => run(() => navigator.clipboard.writeText(row.token),'কোড কপি হয়েছে।')}>কোড কপি</Btn></>}</div>;
       return <div className="stack" key={row.token}><strong>{row.label} · {row.purpose === 'join' ? 'আমন্ত্রণ' : 'নতুন ফোন'}</strong>
         {row.expires_at && <div className="small muted">মেয়াদ: {expiryLabel(row.expires_at)}</div>}
         <span className="small break">{link}</span><div className="btn-row">

@@ -29,20 +29,15 @@ export function Welcome({ signedIn }) {
   return <main className="kh-welcome">
     <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">KHAI KHAI</strong><span className="khai-entry-label">বাজারের খাতা</span></header>
     <div className="kh-layout">
-      <div className="kh-art" role="img" aria-label="নমুনা খাতা। চাল ১২০ টাকা ও ডাল ৬০ টাকা, মোট ১৮০ টাকা।">
-        <div className="kh-cover" aria-hidden="true"></div>
-        <div className="kh-slip" aria-hidden="true">
-          <span className="kh-date">নমুনা হিসাব</span><strong>বাজারের ফর্দ</strong>
-          <div><span>চাল</span><b>৳ ১২০</b></div><div><span>ডাল</span><b>৳ ৬০</b></div>
-          <div className="kh-sum"><span>মোট</span><b>৳ ১৮০</b></div>
-        </div>
-      </div>
+      <div className="kh-art" aria-hidden="true"><div className="kh-cover" /><div className="kh-slip"><strong>বাজারের খাতা</strong></div></div>
       <section className="kh-intro">
         <h1>সবার বাজার,<br/><em>এক খাতায়।</em></h1>
         <p>কে কত টাকার বাজার করলেন, আর কার ভাগে কত পড়ল—একসঙ্গে হিসাব রাখুন।</p>
         <nav aria-label="খাতা খুলুন">
           <a className="kh-create" href="#/create">নতুন খাতা তৈরি করুন <span aria-hidden="true">→</span></a>
           <a href={signedIn && location.hash === '#/new-group' ? '#/' : '#/open'}>আমার খাতা খুলুন</a>
+          <a href="#/restore">আমন্ত্রণ টোকেন দিয়ে যোগ দিন</a>
+          {!signedIn && <a href="#/member-setup">পুরোনো সদস্যের লগইন তৈরি করুন</a>}
         </nav>
         <aside>সদস্য হিসেবে যোগ দিতে অ্যাডমিনের পাঠানো লিংক খুলুন।</aside>
       </section>
@@ -67,7 +62,7 @@ function useInviteName(code) {
 }
 
 export function AuthScreen({ invite, create, returning, initialMode }) {
-  const [mode, setMode] = useState(initialMode || (create ? 'up' : 'in'));
+  const [mode, setMode] = useState(initialMode || 'in');
   const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [pw, setPw] = useState('');
   const [info, setInfo] = useState('');
   const [busy, run] = useAction();
@@ -89,7 +84,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
         if (error) throw new Error(errText(error));
         if (!data.session) { setMode('verify'); setPw(''); setInfo('আপনার ইমেইলে একটি নিশ্চিতকরণ লিংক পাঠানো হয়েছে। লিংকে ক্লিক করে তারপর খাতায় ফিরে আসুন।'); }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: returning && !email.includes('@') ? email.trim().toLowerCase()+MEMBER_DOMAIN : email.trim(), password: pw, options: { captchaToken: await captchaToken() } });
+        const { error } = await supabase.auth.signInWithPassword({ email: returning && !email.includes('@') ? email.trim().toLowerCase() + MEMBER_DOMAIN : email.trim(), password: pw, options: { captchaToken: await captchaToken() } });
         if (error) throw new Error(errText(error));
       }
     });
@@ -100,7 +95,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
       {(create || returning) ? <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">KHAI KHAI</strong><a href="#/">← ফিরে যান</a></header> : <Brand />}
       <div className={(create || returning) ? 'kh-new-body' : undefined}>
       {invite && <div className="banner green">{group.name ? 'আমন্ত্রণ · ' + group.name : group.error || 'আমন্ত্রণ দেখা হচ্ছে…'}</div>}
-      {returning && <><h1>আমার খাতা খুলুন</h1><p className="kh-admin-intro">আগের খাতায় ফিরতে আপনার ইমেইল ও পাসওয়ার্ড দিন।</p></>}
+      {returning && <><h1>আমার খাতা খুলুন</h1><p className="kh-admin-intro">সদস্য হলে ইউজারনেম, অ্যাডমিন হলে ইমেইল দিয়ে প্রবেশ করুন।</p></>}
       {create && <><h1>আপনার অ্যাকাউন্ট</h1><p className="kh-admin-intro">নতুন খাতা খুলতে অ্যাকাউন্ট তৈরি করুন অথবা আপনার অ্যাকাউন্টে সাইন ইন করুন।</p></>}
       {mode === 'verify' ? <section className="card stack"><h2>ইমেইল চেক করুন</h2><strong>{email}</strong><p role="status">{info}</p>
         <Btn busy={busy} onClick={() => run(async () => {
@@ -114,7 +109,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
           <button type="button" className={mode === 'up' ? 'on' : ''} onClick={() => switchMode('up')}>নতুন অ্যাকাউন্ট</button>
         </div>}
         {mode === 'up' ? <Field label="আপনার নাম"><input type="text" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required /></Field> : null}
-        <Field label={returning && mode === 'in' ? "ইউজারনেম বা ইমেইল" : "ইমেইল"}><input type={returning && mode === 'in' ? "text" : "email"} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required /></Field>
+        <Field label={returning && mode === 'in' ? "ইউজারনেম বা ইমেইল" : "ইমেইল"}><input type={returning && mode === 'in' ? "text" : "email"} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete={returning ? "username" : "email"} required /></Field>
         {mode !== 'forgot' && <Field label="পাসওয়ার্ড" hint={mode === 'up' ? 'অন্তত ৬ অক্ষর' : undefined}>
           <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete={mode === 'up' ? 'new-password' : 'current-password'} required minLength={6} />
         </Field>}
@@ -123,7 +118,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
         {mode === 'in' && <button className="btn ghost" type="button" onClick={() => switchMode('forgot')}>পাসওয়ার্ড ভুলে গেছেন?</button>}
         {mode === 'forgot' && <button className="btn ghost" type="button" onClick={() => switchMode('in')}>সাইন ইনে ফিরুন</button>}
       </form>}
-      {returning && <div className="return-help"><a href="#/restore">রিকভারি কোড দিয়ে খাতা খুলুন</a><p>আমন্ত্রিত সদস্য হলে নতুন ফোনে অ্যাডমিনের পাঠানো প্রবেশের লিংক খুলুন।</p></div>}
+      {returning && <div className="return-help"><a href="#/restore">সদস্যের আমন্ত্রণ টোকেন দিন</a><p>আমন্ত্রিত সদস্য হলে নতুন ফোনে অ্যাডমিনের পাঠানো প্রবেশের লিংক খুলুন।</p></div>}
       {!returning && !create && <a href="#/">শুরুতে ফিরুন</a>}
       </div>
     </main>
@@ -174,7 +169,7 @@ export function Invite({ code }) {
     s.setGid(id); await s.refresh(); go('#/');
   });
   return <main className="app no-nav"><Brand /><section className="card stack">
-    <h2>{group.name || 'খাতার আমন্ত্রণ'}</h2><p>{s.session.user.email}</p>
+    <h2>{group.name || 'খাতার আমন্ত্রণ'}</h2><p>{s.session.user.email?.replace(MEMBER_DOMAIN,'')}</p>
     {group.error ? <><p role="alert">{group.error}</p><button onClick={group.retry} className="btn secondary">আবার চেষ্টা করুন</button></> :
       <><p>আমন্ত্রিত ইমেইল দিয়ে যোগদান নিশ্চিত করুন। নতুন সদস্যের বাজারের ভাগ আজ থেকে ধরা হবে।</p>
       <Btn busy={busy} disabled={!group.name} onClick={open}>এই খাতায় যোগ দিন</Btn></>}
@@ -208,13 +203,13 @@ export function Account() {
     const ok = await ask({ title: 'আপনার অ্যাকাউন্ট মুছবেন?',
       body: 'আপনার লগইন, ইমেইল ও নাম-পরিচয়ের সংযোগ মুছে যাবে। আপনি সব গ্রুপ থেকে বেরিয়ে যাবেন।\nগ্রুপের অন্যদের পুরোনো মাসের হিসাব ঠিক থাকবে; আপনার আগের বাজার ও দেনা-পাওনা আপনার নামেই ইতিহাসে দেখাবে।\nযে গ্রুপে আপনিই একমাত্র সদস্য, সেই গ্রুপটিও মুছে যাবে। আপনি যদি কোনো গ্রুপের একমাত্র অ্যাডমিন হন, আগে অন্য সদস্যকে দায়িত্ব দিতে হবে।\nএটি ফেরানো যাবে না।',
       confirmText: 'অ্যাকাউন্ট মুছুন', danger: true, requireText: 'মুছুন' });
-    if (ok) run(async () => { await rpc('delete_my_account'); localStorage.removeItem('bk_gid'); await supabase.auth.signOut(); go('#/'); }, 'অ্যাকাউন্ট মুছে ফেলা হয়েছে।');
+    if (ok) run(async () => { await rpc('delete_my_account'); await supabase.auth.signOut(); go('#/'); }, 'অ্যাকাউন্ট মুছে ফেলা হয়েছে।');
   };
 
   return <main className="app no-nav"><section className="card stack"><h2>আমার অ্যাকাউন্ট</h2>
-    <p>{s.profile?.name}</p><p>{s.session.user.email}</p>
+    <p>{s.profile?.name}</p><p>{s.session.user.email?.replace(MEMBER_DOMAIN,'')}</p>
     {s.session.user.email && <a className="btn secondary" href="#/recover">পাসওয়ার্ড বদলান</a>}
-    {!s.session.user.email && <a className="btn" href="#/member-setup">ইউজারনেম ও পাসওয়ার্ড তৈরি করুন</a>}
+    {!s.session.user.email && <AddEmail />}
     <Btn busy={busy} onClick={() => run(async () => {const {error} = await supabase.auth.signOut({scope:'local'}); if(error) throw error; go('#/');})}>সাইন আউট</Btn>
     <Btn busy={busy} className="danger secondary" onClick={delAccount}>আমার অ্যাকাউন্ট মুছে ফেলুন</Btn>
     <a href="#/">ফিরে যান</a></section>{confirmNode}</main>;

@@ -13,9 +13,10 @@ export async function deviceSession() {
 }
 
 export function openLedger(id, page = '/') {
-  localStorage.setItem('bk_gid', id);
-  location.replace('#' + page);
-  location.reload();
+  const url = new URL('/', location.origin);
+  url.searchParams.set('ledger', id);
+  url.hash = page;
+  location.replace(url.href);
 }
 
 export function AcceptLink({ token }) {
@@ -53,11 +54,11 @@ export function OpenLedger({signedIn}) {
   const [error,setError] = useState('');
   return <main className="app no-nav"><section className="card stack"><h1>আমার খাতা খুলুন</h1>
     {signedIn && <a href="#/">এই ডিভাইসের খাতায় ফিরুন</a>}
-    <p>নতুন ফোনে সদস্য হলে অ্যাডমিনের পাঠানো প্রবেশের লিংক খুলুন। অ্যাডমিন হলে সংরক্ষিত রিকভারি কোড দিন।</p>
+    <p>সদস্য হিসেবে যোগ দিতে অ্যাডমিনের পাঠানো একবার ব্যবহারযোগ্য টোকেন দিন।</p>
     <form onSubmit={e => {e.preventDefault(); const value = code.trim();
-      if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value)) return setError('সম্পূর্ণ রিকভারি কোড দিন।');
+      if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value)) return setError('সম্পূর্ণ আমন্ত্রণ টোকেন দিন।');
       location.hash = '/access/' + value;
-    }}><Field label="রিকভারি কোড"><input type="text" value={code} required autoComplete="off" onChange={e => setCode(e.target.value)} /></Field>
+    }}><Field label="আমন্ত্রণ টোকেন"><input type="text" value={code} required autoComplete="off" onChange={e => setCode(e.target.value)} /></Field>
     {error && <p role="alert">{error}</p>}<Btn>খাতা খুলুন</Btn></form>
     {!signedIn && <a href="#/signin">আগের ইমেইল অ্যাকাউন্টে প্রবেশ করুন</a>}
   </section></main>;

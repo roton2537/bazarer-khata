@@ -1,11 +1,9 @@
-import { MemberCredentials } from './screens/MemberCredentials.jsx';
+import { MemberCredentials, MEMBER_DOMAIN } from './screens/MemberCredentials.jsx';
 import React, { useEffect, useState } from 'react';
 import { supabase, configured } from './lib/supabase.js';
 import { ToastProvider, Spinner } from './ui.jsx';
 import { StoreProvider, useStore } from './store.jsx';
-import { OfflineBanner } from './screens/Banners.jsx';
 import { toBnDigits } from './lib/format.js';
-import RecoveryGate from './screens/RecoveryGate.jsx';
 import { AuthScreen, Onboarding, Welcome, Invite, Account, PasswordForm } from './screens/Entry.jsx';
 import { AcceptLink, OpenLedger } from './screens/PhoneAccess.jsx';
 import Home from './screens/Home.jsx';
@@ -69,10 +67,11 @@ function Root() {
   if (hash === '#/restore') return <OpenLedger signedIn={!!session} />;
   if (hash === '#/open' && !session) return <AuthScreen key="open" returning />;
   if (hash === '#/create') {
-    if (!session?.user.email || session.user.is_anonymous) return <AuthScreen key="admin" create />;
+    if (!session?.user.email || session.user.is_anonymous || session.user.email.endsWith(MEMBER_DOMAIN)) return <AuthScreen key="admin" create />;
     return <Onboarding user={session.user} />;
   }
   if (!session) {
+    if (hash === '#/member-setup') return <MemberCredentials legacy onDone={() => go('#/')} />;
     if (hash.startsWith('#/recover')) return <AuthScreen key="recover" initialMode="forgot" />;
     if (invite || ['#/create', '#/signin'].includes(hash)) return <AuthScreen key={hash} invite={invite} create={hash === '#/create'} />;
     return <Welcome key={hash} signedIn={false} />;
@@ -83,8 +82,8 @@ function Root() {
 
 function Authed({ hash, invite }) {
   const s = useStore();
-  if (hash === '#/member-setup' && !s.session.user.email) return <MemberCredentials onDone={() => go('#/')} />;
-  if (hash === '#/account') return <Account />;
+  if (s.memberships?.some(m => !m.left_on && m.role === 'member') && !s.session.user.email) return <MemberCredentials onDone={() => go('#/')} />;
+  if (hash === '#/account' || hash === '#/member-setup') return <Account />;
   if (s.error && (!s.memberships || !s.data)) return <main className="app no-nav"><section className="card stack" role="alert"><h1>খাতা লোড করা যায়নি</h1><p>{s.error}</p><button className="btn" disabled={s.loading} onClick={() => s.refresh().catch(() => {})}>আবার চেষ্টা করুন</button><a href="#/account">আমার অ্যাকাউন্ট</a></section></main>;
   if (!s.memberships) return <div className="app no-nav center"><Spinner /></div>;
   if (invite) return <Invite key={invite} code={invite} />;
@@ -93,7 +92,7 @@ function Authed({ hash, invite }) {
     <section className="kh-new-body card stack"><h1>আমার খাতা</h1>
       <p>এই অ্যাকাউন্টে এখনও কোনো খাতা নেই। নতুন খাতা তৈরি করুন অথবা সদস্য হিসেবে অ্যাডমিনের আমন্ত্রণ লিংক খুলুন।</p>
       <a className="btn" href="#/create">নতুন খাতা তৈরি করুন</a>
-      <a href="#/restore">রিকভারি কোড দিয়ে পুরোনো খাতা খুলুন</a>
+      <a href="#/restore">সদস্যের আমন্ত্রণ টোকেন দিন</a>
       <a href="#/account">আমার অ্যাকাউন্ট</a>
     </section></main>;
   if (!s.memberships.length || hash === '#/new-group') return <Welcome signedIn />;
@@ -120,10 +119,8 @@ function Authed({ hash, invite }) {
         <a className={`bell${r === '/feed' ? ' on' : ''}`} href="#/feed" aria-label={s.unread ? `খবর, ${s.unread}টি নতুন` : 'খবর'}>
           <Icon name="bell" />{s.unread ? <span className="badge">{s.unread > 9 ? '৯+' : toBnDigits(s.unread)}</span> : null}
         </a>
-        <OfflineBanner />
         {body}
       </div>
-      {s.isAdmin && s.me && !s.me.recovery_saved_at ? <RecoveryGate /> : null}
       <nav className="nav" aria-label="প্রধান মেনু"><div className="nav-in">
         {tabs.map(([p, ic, label, badge]) => (
           <a key={p} aria-current={r === p ? "page" : undefined} href={`#${p}`} className={r === p || (p === '/' && r === '') ? 'on' : ''}>

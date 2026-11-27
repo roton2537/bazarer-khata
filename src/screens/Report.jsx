@@ -4,7 +4,6 @@ import { Header, Balance, Avatar, Empty } from './parts.jsx';
 import { fmtMoney, parseMoney, minorToInput, monthLabel, dateLabel, dayLabel, todayDhaka, monthOf, addMonths, correctionWindowOpen, newToken } from '../lib/format.js';
 import { Btn, Field, Sheet, Tag, useAction, useConfirm, useToast } from '../ui.jsx';
 import { rpc } from '../lib/supabase.js';
-import { rpcQueued } from '../lib/offline.js';
 
 const PAY_STATUS = { pending: ['amber', 'নিশ্চিতের অপেক্ষায়'], confirmed: ['', 'নিশ্চিত'], rejected: ['red', 'প্রাপক পাননি বলেছেন'], cancelled: ['gray', 'বাতিল'], expired: ['gray', 'অনিশ্চিত থেকে গেছে'] };
 const KIND = { add: 'নতুন বাজার যোগ', edit: 'বাজার সংশোধন', delete: 'বাজার মোছা' };
@@ -14,11 +13,9 @@ export default function Report() {
   const finalized = rep.status === 'finalized';
   const outstanding = (rep.settlements || []).reduce((sum, settlement) => sum + settlement.amount, 0);
   const today = todayDhaka();
-  const monthEnded = today >= addMonths(s.month, 1);
   const canPay = !finalized && s.month <= monthOf(today) && !!s.me;
   const [paySheet, setPaySheet] = useState(null);
-  const [corrSheet, setCorrSheet] = useState(false);
-  const [finSheet, setFinSheet] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(s.month === monthOf(today) ? today : s.month);
   const [ask, confirmNode] = useConfirm();
   const [busy, run] = useAction();
   const meId = s.me?.id;
@@ -56,28 +53,10 @@ export default function Report() {
   const pendingCorr = s.data.corrections.filter((c) => c.status === 'pending');
   const doneCorr = s.data.corrections.filter((c) => c.status !== 'pending');
 
-  const resolve = async (c, approve) => {
-    const ok = await ask({ title: approve ? 'অনুরোধ অনুমোদন করবেন?' : 'অনুরোধ বাতিল করবেন?',
-      body: approve ? `${c.requested_by_name}-এর “${KIND[c.kind]}” অনুরোধটি হিসাবে যুক্ত হবে এবং সংশ্লিষ্ট সদস্যদের ভাগ বদলাবে।` : 'অনুরোধটি বাতিল হবে, হিসাব আগের মতোই থাকবে।',
-      confirmText: approve ? 'অনুমোদন করুন' : 'বাতিল করুন', danger: !approve });
-    if (ok) run(async () => { await rpc('resolve_correction', { p_id: c.id, p_approve: approve, p_note: null }); await reload(); }, approve ? 'অনুমোদিত হয়েছে।' : 'বাতিল করা হয়েছে।');
+  const closeDate = async () => {
+    if (!await ask({title: dayLabel(selectedDate) + ' তারিখের বাজার বন্ধ করবেন?', body:'এই দিনের খরচ ও ভাগ সংরক্ষিত থাকবে। একই সদস্যরা অন্য তারিখে বাজার লিখতে পারবেন।', confirmText:'তারিখ বন্ধ করুন'})) return;
+    run(async () => { await rpc('close_ledger_date', {p_group:s.gid,p_date:selectedDate}); await reload(); }, 'তারিখ বন্ধ হয়েছে।');
   };
-
-  const startFinalize = async () => {
-    const ok = await ask({ title: `${monthLabel(s.month)} মাসের হিসাব চূড়ান্ত করবেন?`,
-      body: 'চূড়ান্ত করলে এই মাসের কোনো বাজার, ভাগ বা পরিশোধ আর বদলানো যাবে না। যাঁদের টাকা বাকি আছে, তা এই মাসের রিপোর্টেই বাকি দেখাবে। নতুন মাসের হিসাব শূন্য থেকে শুরু হবে।',
-      confirmText: 'এগিয়ে যান' });
-    if (!ok) return;
-    run(async () => {
-      const r = await rpc('finalize_month', { p_group: s.gid, p_month: s.month, p_force: false });
-      if (!r.ok) setFinSheet(r); else { await reload(); toast('হিসাব চূড়ান্ত হয়েছে।'); }
-    });
-  };
-  const forceFinalize = () => run(async () => {
-    await rpc('finalize_month', { p_group: s.gid, p_month: s.month, p_force: true });
-    setFinSheet(null); await reload();
-  }, 'হিসাব চূড়ান্ত হয়েছে।');
-
   const printName = `${s.group.name} — ${monthLabel(s.month)} ${finalized ? '(চূড়ান্ত)' : '(খসড়া)'}`;
 
   return (
@@ -88,7 +67,7 @@ export default function Report() {
         <div className="row between" style={{ marginTop: 6 }}><span className="muted">মোট বাজার</span><b style={{ fontSize: 22 }}>{fmtMoney(rep.total, g)}</b></div>
         <div className="khai-outstanding"><div>এখনো বাকি: {fmtMoney(outstanding, g)}</div><div className="small muted">{outstanding ? 'পরিশোধ প্রাপক নিশ্চিত করলে অবশিষ্ট হিসাব কমবে।' : 'সব হিসাব মিটেছে ✓'}</div></div>
         {finalized ? <p className="small muted">চূড়ান্ত করেছেন {rep.finalized_by_name || 'অ্যাডমিন'} · {dateLabel(new Date(rep.finalized_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }))}</p>
-          : <p className="small muted">এটি খসড়া রিপোর্ট। অ্যাডমিন চূড়ান্ত করার আগে বদলাতে পারে।</p>}
+          : <p className="small muted">এই মাসের মোট হিসাবে খোলা ও বন্ধ তারিখের বাজার রয়েছে।</p>}
         <div className="btn-row noprint">
           <button className="btn small secondary" onClick={shareSummary}>সারাংশ শেয়ার করুন</button>
           <button className="btn small secondary" onClick={() => window.print()}>PDF / প্রিন্ট</button>
@@ -148,13 +127,10 @@ export default function Report() {
         </div>
       ) : null}
 
-      {!finalized && (pendingCorr.length > 0 || doneCorr.length > 0 || (s.isActive && correctionWindowOpen(s.month, today))) ? (
+      {!finalized && (pendingCorr.length > 0 || doneCorr.length > 0) ? (
         <div className="section">
           <h2>সংশোধনের অনুরোধ</h2>
-          {s.isActive && correctionWindowOpen(s.month, today) ? (
-            <div className="banner green">আগের মাসের বাদ পড়া বা ভুল বাজার ঠিক করতে পরের মাসের প্রথম দুই দিন অনুরোধ করা যায়। অ্যাডমিন দেখে অনুমোদন করবেন।
-              <div className="btn-row"><button className="btn small" onClick={() => setCorrSheet(true)}>+ সংশোধনের অনুরোধ</button></div></div>) : null}
-          {[...pendingCorr, ...doneCorr].map((c) => <CorrectionCard key={c.id} c={c} g={g} admin={s.isAdmin && !finalized} busy={busy} onResolve={resolve} />)}
+          {[...pendingCorr, ...doneCorr].map((c) => <CorrectionCard key={c.id} c={c} g={g} />)}
         </div>
       ) : null}
 
@@ -166,31 +142,24 @@ export default function Report() {
         <button className="btn secondary" disabled={s.data.members.filter(m => !m.left_on).length < 2} onClick={() => setAdjSheet(true)}>+ সমন্বয় যোগ করুন</button>
       </div> : null}
 
-      <div className="section noprint">
-        {s.isAdmin && !finalized && monthEnded ? <Btn busy={busy} onClick={startFinalize}>এই মাসের হিসাব চূড়ান্ত করুন</Btn> : null}
-        {s.isAdmin && !finalized && !monthEnded ? <p className="small muted center">মাস শেষ হলে অ্যাডমিন এখান থেকে হিসাব চূড়ান্ত করতে পারবেন।</p> : null}
-      </div>
+      <section className="section card stack">
+        {s.isAdmin && !finalized && <form className="stack" onSubmit={e => {e.preventDefault(); closeDate();}}>
+          <Field label="বাজার বন্ধের তারিখ"><input type="date" required min={s.month} max={s.month === monthOf(today) ? today : new Date(Date.parse(addMonths(s.month,1))-86400000).toISOString().slice(0,10)} value={selectedDate} onChange={e => setSelectedDate(e.target.value)} /></Field>
+          <Btn busy={busy} disabled={s.data.closures.some(d => d.ledger_date === selectedDate)}>এই তারিখ বন্ধ করুন</Btn>
+        </form>}
+        {s.data.closures.map(d => <details key={d.ledger_date}><summary>{dayLabel(d.ledger_date)} · বন্ধ · {fmtMoney(d.report.total,g)}</summary>
+          {d.report.purchases.map(p => <div className="item" key={p.id}><b>{p.description} · {fmtMoney(p.amount,g)}</b><div>{p.buyer}</div>{(p.shares || []).map((x,i) => <small key={i}>{x.member} · {fmtMoney(x.share,g)} </small>)}</div>)}
+        </details>)}
+      </section>
 
       {paySheet ? <PaySheet init={paySheet} onClose={() => setPaySheet(null)} /> : null}
       {adjSheet ? <AdjustSheet onClose={() => setAdjSheet(false)} /> : null}
-      {corrSheet ? <CorrectionSheet onClose={() => setCorrSheet(false)} /> : null}
-      {finSheet ? (
-        <Sheet title="চূড়ান্ত করার আগে দেখুন" onClose={() => setFinSheet(null)}>
-          <div className="banner red">
-            {finSheet.pending_corrections > 0 ? <p>অমীমাংসিত সংশোধনের অনুরোধ: <b>{finSheet.pending_corrections}টি</b> (এগুলো বাতিল হয়ে যাবে)</p> : null}
-            {finSheet.pending_payments > 0 ? <p>নিশ্চিত হয়নি এমন পরিশোধ: <b>{finSheet.pending_payments}টি</b> (এগুলো হিসাবে ধরা হবে না)</p> : null}
-          </div>
-          {pendingCorr.map(c => <p key={c.id} className="small break"><b>{KIND[c.kind]}</b> · {c.requested_by_name} · {c.description || c.old?.description}{c.reason && ` · ${c.reason}`}</p>)}
-          {rep.payments.filter((p) => p.status === 'pending').map((p) => <div key={p.id} className="small" style={{ marginTop: 6 }}>{p.from_name} → {p.to_name}: {fmtMoney(p.amount, g)}</div>)}
-          <p className="small muted">প্রাপকদের আগে নিশ্চিত করতে বলা বা অনুরোধগুলো নিষ্পত্তি করাই ভালো। চাইলে এখনই চূড়ান্ত করতে পারেন।</p>
-          <div className="btn-row"><button className="btn secondary" onClick={() => setFinSheet(null)}>আগে ঠিক করি</button><Btn busy={busy} className="danger" onClick={forceFinalize}>তবুও চূড়ান্ত করুন</Btn></div>
-        </Sheet>) : null}
       {confirmNode}
     </>
   );
 }
 
-function CorrectionCard({ c, g, admin, busy, onResolve }) {
+function CorrectionCard({ c, g }) {
   const [kind, label] = c.status === 'pending' ? ['amber', 'অপেক্ষায়'] : c.status === 'approved' ? ['', 'অনুমোদিত'] : ['red', 'বাতিল'];
   return (
     <div className="card" style={{ marginTop: 8 }}>
@@ -206,7 +175,6 @@ function CorrectionCard({ c, g, admin, busy, onResolve }) {
           {c.kind === 'edit' && c.old ? <div className="small muted" style={{ marginTop: 6 }}>আগের ভাগ: {c.old.shares.map((x) => `${x.name} ${fmtMoney(x.share, g)}`).join(', ')}</div> : null}
         </>
       ) : null}
-      {admin && c.status === 'pending' ? <div className="btn-row"><Btn busy={busy} className="small" onClick={() => onResolve(c, true)}>অনুমোদন</Btn><Btn busy={busy} className="small danger secondary" onClick={() => onResolve(c, false)}>বাতিল</Btn></div> : null}
     </div>
   );
 }
@@ -224,9 +192,9 @@ export function PaySheet({ init, onClose }) {
     if (!to) return toast('কাকে দিয়েছেন বেছে নিন।', true);
     if (!a || a <= 0) return toast('পরিশোধের টাকা লিখুন।', true);
     run(async () => {
-      const r = await rpcQueued('add_payment', { p_group: s.gid, p_token: token, p_month: s.month, p_to: to, p_amount: a, p_note: null });
-      if (r?.queued) toast('ইন্টারনেট নেই। লেখাটি ফোনে রাখা আছে, নেট এলে জমা হবে।');
-      else { toast('পরিশোধ লেখা হয়েছে। প্রাপক নিশ্চিত করলে হিসাবে যোগ হবে।'); await s.reloadGroup(); }
+      await rpc('add_payment', { p_group: s.gid, p_token: token, p_month: s.month, p_to: to, p_amount: a, p_note: null });
+      toast('পরিশোধ লেখা হয়েছে। প্রাপক নিশ্চিত করলে হিসাবে যোগ হবে।');
+      await s.reloadGroup();
       onClose();
     });
   };
@@ -238,52 +206,6 @@ export function PaySheet({ init, onClose }) {
         <Field label={`কত ${g.currency_name}`}><input type="text" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} autoFocus /></Field>
         <p className="small muted">প্রাপকের কাছে নিশ্চিত করার অনুরোধ যাবে। তিনি নিশ্চিত করার পরই আপনার বাকি কমবে।</p>
         <div className="btn-row"><button type="button" className="btn secondary" onClick={onClose}>থাক</button><Btn busy={busy} type="submit">লিখে রাখুন</Btn></div>
-      </form>
-    </Sheet>
-  );
-}
-
-function CorrectionSheet({ onClose }) {
-  const s = useStore(); const g = s.group; const dec = g.currency_decimals; const toast = useToast();
-  const [kind, setKind] = useState('add');
-  const [pid, setPid] = useState('');
-  const monthEnd = new Date(new Date(addMonths(s.month, 1) + 'T00:00:00Z').getTime() - 86400000).toISOString().slice(0, 10);
-  const [date, setDate] = useState(monthEnd);
-  const [buyer, setBuyer] = useState(s.me.id); const [desc, setDesc] = useState(''); const [amt, setAmt] = useState(''); const [reason, setReason] = useState('');
-  const [busy, run] = useAction();
-  const token = useMemo(() => newToken(), []);
-  const purchases = s.data.purchases;
-  const pick = (id) => {
-    setPid(id); const p = purchases.find((x) => x.id === id);
-    if (p) { setDate(p.bazar_date); setBuyer(p.buyer_id); setDesc(p.description); setAmt(minorToInput(p.amount, dec)); }
-  };
-  const submit = (e) => {
-    e.preventDefault();
-    const a = parseMoney(amt, dec);
-    if (kind !== 'add' && !pid) return toast('কোন বাজারটি তা বেছে নিন।', true);
-    if (kind !== 'delete' && (!a || a <= 0 || !desc.trim())) return toast('কী কিনেছেন ও টাকা লিখুন।', true);
-    run(async () => {
-      await rpc('request_correction', { p_group: s.gid, p_token: token, p_month: s.month, p_kind: kind, p_purchase: kind === 'add' ? null : pid,
-        p_date: kind === 'delete' ? null : date, p_buyer: kind === 'delete' ? null : buyer, p_desc: kind === 'delete' ? null : desc, p_amount: kind === 'delete' ? null : a, p_items: [], p_reason: reason });
-      await s.reloadGroup(); onClose();
-    }, 'অনুরোধ অ্যাডমিনের কাছে গেছে।');
-  };
-  return (
-    <Sheet title={`${monthLabel(s.month)} মাসের সংশোধনের অনুরোধ`} onClose={onClose}>
-      <form onSubmit={submit}>
-        <div className="seg">{[['add', 'বাদ পড়া বাজার'], ['edit', 'ভুল ঠিক'], ['delete', 'মুছতে চাই']].map(([k, l]) => <button type="button" key={k} className={kind === k ? 'on' : ''} onClick={() => { setKind(k); setPid(''); }}>{l}</button>)}</div>
-        {kind !== 'add' ? (
-          <Field label="কোন বাজার"><select value={pid} onChange={(e) => pick(e.target.value)}><option value="">— বেছে নিন —</option>
-            {purchases.map((p) => <option key={p.id} value={p.id}>{dayLabel(p.bazar_date)} · {p.description} · {fmtMoney(p.amount, g)}</option>)}</select></Field>) : null}
-        {kind !== 'delete' ? (
-          <>
-            <Field label="কী কিনেছেন"><input type="text" value={desc} onChange={(e) => setDesc(e.target.value)} /></Field>
-            <Field label={`মোট খরচ (${g.currency_name})`}><input type="text" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} /></Field>
-            <Field label="বাজারের তারিখ"><input type="date" value={date} min={s.month} max={monthEnd} onChange={(e) => setDate(e.target.value)} /></Field>
-            <Field label="ক্রেতা"><select value={buyer} onChange={(e) => setBuyer(e.target.value)}>{s.data.members.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></Field>
-          </>) : null}
-        <Field label="কারণ (ঐচ্ছিক)"><input type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="যেমন: ৩০ তারিখ রাতে লিখতে ভুলে গিয়েছিলাম" /></Field>
-        <div className="btn-row"><button type="button" className="btn secondary" onClick={onClose}>থাক</button><Btn busy={busy} type="submit">অনুরোধ পাঠান</Btn></div>
       </form>
     </Sheet>
   );

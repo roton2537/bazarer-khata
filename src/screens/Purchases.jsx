@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '../store.jsx';
 import { Header, Avatar, Empty } from './parts.jsx';
 import { addMonths, fmtMoney, parseMoney, minorToInput, todayDhaka, monthOf, dayLabel, newToken, fmtNum } from '../lib/format.js';
@@ -87,18 +87,15 @@ export function PurchaseForm({ editId }) {
   const today = todayDhaka(); const cm = monthOf(today);
   const [ask, confirmNode] = useConfirm();
   const [busy, run] = useAction();
-  const token = useRef(newToken());
   const [date, setDate] = useState(editing?.bazar_date || today);
-  const [desc, setDesc] = useState(editing?.description || '');
-  const [mode, setMode] = useState(editing?.purchase_items?.length ? 'items' : 'total');
-  const [total, setTotal] = useState(editing && !editing.purchase_items.length ? minorToInput(editing.amount, dec) : '');
-  const [items, setItems] = useState(editing?.purchase_items?.length ? editing.purchase_items.map((i) => ({ name: i.name, amount: minorToInput(i.amount, dec) })) : [{ name: '', amount: '' }, { name: '', amount: '' }]);
+  const [items, setItems] = useState(() => editing?.purchase_items?.length
+    ? editing.purchase_items.map(i => ({name:i.name,amount:minorToInput(i.amount,dec),token:newToken()}))
+    : [{name:editing?.description || '',amount:editing ? minorToInput(editing.amount,dec) : '',token:newToken()}]);
   const [preview, setPreview] = useState([]);
-
-  const itemsMinor = items.map((i) => ({ name: i.name.trim(), amount: parseMoney(i.amount, dec) })).filter((i) => i.name || i.amount);
-  const itemsSum = itemsMinor.reduce((a, i) => a + (i.amount || 0), 0);
-  const amount = mode === 'total' ? parseMoney(total, dec) : itemsSum;
-  const validItems = mode === 'total' || (itemsMinor.length > 0 && itemsMinor.every((i) => i.name && i.amount > 0));
+  const legacyItems = !!editing?.purchase_items?.length;
+  const itemsMinor = items.map(i => ({name:i.name.trim(),amount:parseMoney(i.amount,dec),token:i.token}));
+  const amount = itemsMinor.reduce((sum,i) => sum + (i.amount || 0), 0);
+  const validItems = itemsMinor.every(i => i.name && i.amount > 0);
 
   useEffect(() => {
     if (!amount || amount <= 0) { setPreview([]); return undefined; }
@@ -106,30 +103,27 @@ export function PurchaseForm({ editId }) {
     setPreview([]);
     const t = setTimeout(async () => {
       try {
-        const shares = await rpc('preview_split', { p_group: s.gid, p_date: date, p_amount: amount });
+        const splits = await Promise.all((legacyItems ? [amount] : itemsMinor.map(i=>i.amount).filter(a=>a>0)).map(a=>rpc('preview_split',{p_group:s.gid,p_date:date,p_amount:a})));
+        const combined = new Map();
+        for (const rows of splits) for (const row of rows) {
+          combined.set(row.member_id,{...row,share:(combined.get(row.member_id)?.share || 0)+Number(row.share)});
+        }
+        const shares = [...combined.values()];
         if (current) setPreview(shares);
       } catch { /* The preview stays empty when the request fails. */ }
     }, 250);
     return () => { current = false; clearTimeout(t); };
-  }, [amount, date, s.gid]);
+  }, [amount, date, s.gid, items]);
 
   const setItem = (i, k, v) => setItems((a) => a.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
   const submit = (e) => {
     e.preventDefault();
-    if (!desc.trim() && !(mode === 'items' && itemsMinor.length)) return toast('কী কিনেছেন লিখুন।', true);
-    if (!amount || amount <= 0) return toast('খরচের টাকা লিখুন।', true);
-    if (!validItems) return toast('প্রতিটি আইটেমের নাম ও টাকা দিন।', true);
+    if (!validItems) return toast('প্রতিটি পণ্যের নাম ও দাম দিন।', true);
     run(async () => {
-      const names = desc.split(/\r?\n/).map(line => line.trim()).filter(Boolean).join('\n');
-      const oldNames = editing?.purchase_items.map(i => i.name) || [];
-      const shortTitle = value => Array.from(value).slice(0, 200).join('');
-      const customTitle = oldNames.length && !['\n', ', '].some(separator => shortTitle(oldNames.join(separator)) === editing.description);
-      const description = mode === 'total' ? names : customTitle ? editing.description : shortTitle(itemsMinor.map(i => i.name).join('\n'));
-      const payload = mode === 'items' ? itemsMinor : [];
-      if (editing) await rpc('update_purchase', { p_id: editing.id, p_date: date, p_buyer: s.me.id, p_desc: description, p_amount: amount, p_items: payload });
-      else {
-        await rpc('add_purchase', { p_group: s.gid, p_token: token.current, p_date: date, p_buyer: s.me.id, p_desc: description, p_amount: amount, p_items: payload });
-      }
+      if (editing) await rpc('update_purchase', {p_id:editing.id,p_date:date,p_buyer:s.me.id,
+        p_desc:legacyItems ? editing.description : itemsMinor[0].name,p_amount:amount,
+        p_items:legacyItems ? itemsMinor.map(({name,amount}) => ({name,amount})) : []});
+      else await rpc('add_products', {p_group:s.gid,p_date:date,p_rows:itemsMinor});
       await s.reloadGroup(); go('#/');
       toast(editing ? 'সংশোধন সংরক্ষিত হয়েছে।' : 'বাজার যোগ হয়েছে।');
     });
@@ -144,28 +138,13 @@ export function PurchaseForm({ editId }) {
     <div className="app no-nav">
       <div className="topbar"><div className="row"><button className="monthbar nb" style={{ width: 44, height: 44, borderRadius: 50, border: '1.5px solid var(--line)', background: 'var(--card)', color: 'var(--green)', fontSize: 20 }} onClick={() => go(editing ? '#/list' : '#/')} aria-label="ফিরে যান">←</button><h1 className="grow">{editing ? 'বাজার সংশোধন' : 'বাজার যোগ করুন'}</h1></div></div>
       <form className="card" onSubmit={submit}>
-        {mode === 'total' && <Field label="পণ্যের নাম" hint="প্রতি লাইনে একটি পণ্যের নাম লিখুন।">
-          <textarea rows={3} value={desc} onChange={e => setDesc(e.target.value)} placeholder={'চাল\nডাল\nতেল'} maxLength={200} required autoFocus={!editing} />
-        </Field>}
-        <div className="seg" style={{ marginTop: 14 }}>
-          <button type="button" className={mode === 'total' ? 'on' : ''} onClick={() => setMode('total')}>শুধু মোট টাকা</button>
-          <button type="button" className={mode === 'items' ? 'on' : ''} onClick={() => setMode('items')}>আলাদা আলাদা দাম</button>
-        </div>
-        {mode === 'total' ? (
-          <Field label="মোট খরচ"><div className="amount-wrap"><input className="big" type="text" inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} placeholder="৫০০" style={{ paddingRight: 70 }} /><span className="cur">{g.currency_name}</span></div></Field>
-        ) : (
-          <div style={{ marginTop: 8 }}>
-            {items.map((it, i) => (
-              <div className="row" key={i} style={{ marginTop: 8, alignItems: 'flex-end' }}>
-                <div className="grow"><input type="text" aria-label="আইটেমের নাম" placeholder="চাল" value={it.name} onChange={(e) => setItem(i, 'name', e.target.value)} /></div>
-                <div style={{ width: 120 }}><input type="text" inputMode="decimal" aria-label="দাম" placeholder="দাম" value={it.amount} onChange={(e) => setItem(i, 'amount', e.target.value)} /></div>
-                {items.length > 1 ? <button type="button" className="btn small secondary" style={{ minWidth: 44, padding: 0 }} aria-label="সারি মুছুন" onClick={() => setItems((a) => a.filter((_, j) => j !== i))}>×</button> : null}
-              </div>
-            ))}
-            <div className="btn-row"><button type="button" className="btn small secondary" onClick={() => setItems((a) => [...a, { name: '', amount: '' }])}>+ আরেকটি আইটেম</button></div>
-            <div className="row between" style={{ marginTop: 10 }}><b>মোট</b><b>{fmtMoney(itemsSum, g)}</b></div>
-          </div>
-        )}
+        {items.map((it,i) => <div className="row" key={it.token} style={{marginBottom:10,alignItems:'end'}}>
+          <div className="grow"><Field label="পণ্যের নাম"><input required maxLength={legacyItems || !editing ? 100 : 200} value={it.name} onChange={e=>setItem(i,'name',e.target.value)} placeholder="চাল" /></Field></div>
+          <div style={{width:'32%',minWidth:0}}><Field label="দাম"><input required inputMode="decimal" value={it.amount} onChange={e=>setItem(i,'amount',e.target.value)} placeholder="০" /></Field></div>
+          {items.length>1 && <button type="button" className="btn small secondary" aria-label="পণ্য সরান" onClick={()=>setItems(a=>a.filter((_,j)=>j!==i))}>×</button>}
+        </div>)}
+        {(!editing || legacyItems) && <button type="button" className="btn secondary" disabled={items.length>=100} onClick={()=>setItems(a=>[...a,{name:'',amount:'',token:newToken()}])}>+ আরেকটি পণ্য যোগ করুন</button>}
+        <div className="row between" style={{marginTop:16}}><b>মোট</b><b>{fmtMoney(amount,g)}</b></div>
         <Field label="বাজারের তারিখ"><input type="date" value={date} min={editing?.month || cm} max={editing && editing.month < cm ? new Date(Date.parse(addMonths(editing.month, 1)) - 86400000).toISOString().slice(0, 10) : today} onChange={(e) => setDate(e.target.value)} required /></Field>
         <p className="small muted">ক্রেতা: {s.me?.display_name}</p>
 

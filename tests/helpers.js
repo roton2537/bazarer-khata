@@ -28,7 +28,7 @@ export async function newDb(latest = false) {
   await db.exec(readFileSync(join(here, '../supabase/migrations/0008_security_index_hardening.sql'), 'utf8'));
 
   if (latest) {
-    for (const migration of ['0009_owner_purchases.sql','0010_date_closures.sql']) {
+    for (const migration of ['0009_owner_purchases.sql','0010_date_closures.sql','0011_individual_products.sql']) {
       await db.exec(readFileSync(join(here, '../supabase/migrations', migration), 'utf8'));
     }
   }

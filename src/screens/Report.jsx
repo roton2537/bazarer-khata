@@ -1,3 +1,4 @@
+import ProductReport from './ProductReport.jsx';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store.jsx';
 import { Header, Balance, Avatar, Empty } from './parts.jsx';
@@ -62,6 +63,7 @@ export default function Report() {
   return (
     <>
       <Header title="মাসিক রিপোর্ট" />
+      <ProductReport />
       <div className="card khai-report-summary" style={{ marginTop: 12 }}>
         <div className="row between"><h2 className="break">{printName}</h2></div>
         <div className="row between" style={{ marginTop: 6 }}><span className="muted">মোট বাজার</span><b style={{ fontSize: 22 }}>{fmtMoney(rep.total, g)}</b></div>

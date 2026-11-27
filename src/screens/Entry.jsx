@@ -67,6 +67,7 @@ function useInviteName(code) {
 export function AuthScreen({ invite, create, returning, initialMode }) {
   const [mode, setMode] = useState(initialMode || 'in');
   const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [pw, setPw] = useState('');
+  const memberLogin = returning && mode === 'in' && !!email.trim() && !email.includes('@');
   const [info, setInfo] = useState('');
   const [busy, run] = useAction();
   const group = useInviteName(invite);
@@ -98,7 +99,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
       {(create || returning) ? <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">MessMate</strong><a href="#/">{t("← ফিরে যান")}</a></header> : <Brand />}
       <div className={(create || returning) ? 'kh-new-body' : undefined}>
       {invite && <div className="banner green">{group.name ? 'আমন্ত্রণ · ' + group.name : group.error || 'আমন্ত্রণ দেখা হচ্ছে…'}</div>}
-      {returning && <><h1>{t("আমার খাতা খুলুন")}</h1><p className="kh-admin-intro">{t("সদস্য হলে ইউজারনেম, অ্যাডমিন হলে ইমেইল দিয়ে প্রবেশ করুন।")}</p></>}
+      {returning && <><h1>{t("আমার খাতা খুলুন")}</h1><p className="kh-admin-intro">{t("সদস্যরা ইউজারনেম ও পিন দিয়ে প্রবেশ করুন। অ্যাডমিনরা ইমেইল ও পাসওয়ার্ড দিন।")}</p></>}
       {create && <><h1>{t("আপনার অ্যাকাউন্ট")}</h1><p className="kh-admin-intro">{t("নতুন খাতা খুলতে অ্যাকাউন্ট তৈরি করুন অথবা আপনার অ্যাকাউন্টে সাইন ইন করুন।")}</p></>}
       {mode === 'verify' ? <section className="card stack"><h2>{t("ইমেইল চেক করুন")}</h2><strong>{email}</strong><p role="status">{info}</p>
         <Btn busy={busy} onClick={() => run(async () => {
@@ -113,15 +114,15 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
         </div>}
         {mode === 'up' ? <Field label={t("আপনার নাম")}><input type="text" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required /></Field> : null}
         <Field label={returning && mode === 'in' ? t("ইউজারনেম বা ইমেইল") : t("ইমেইল")}><input type={returning && mode === 'in' ? "text" : "email"} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete={returning ? "username" : "email"} required /></Field>
-        {mode !== 'forgot' && <Field label={t("পাসওয়ার্ড")} hint={mode === 'up' ? t("অন্তত ৬ অক্ষর") : undefined}>
+        {mode !== 'forgot' && <Field label={memberLogin ? t("পিন বা পুরোনো পাসওয়ার্ড") : t("পাসওয়ার্ড")} hint={mode === 'up' ? t("অন্তত ৬ অক্ষর") : undefined}>
           <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete={mode === 'up' ? 'new-password' : 'current-password'} required minLength={6} />
         </Field>}
         {info ? <div className="banner green">{info}</div> : null}
         <div style={{ marginTop: 16 }}><Btn busy={busy} type="submit">{mode === 'up' ? (create ? t("অ্যাকাউন্ট তৈরি করুন") : t("অ্যাকাউন্ট খুলুন")) : mode === 'forgot' ? t("লিংক পাঠান") : t("সাইন ইন")}</Btn></div>
-        {mode === 'in' && <button className="btn ghost" type="button" onClick={() => switchMode('forgot')}>{t("পাসওয়ার্ড ভুলে গেছেন?")}</button>}
+        {mode === 'in' && !memberLogin && <button className="btn ghost" type="button" onClick={() => switchMode('forgot')}>{t("পাসওয়ার্ড ভুলে গেছেন?")}</button>}
         {mode === 'forgot' && <button className="btn ghost" type="button" onClick={() => switchMode('in')}>{t("সাইন ইনে ফিরুন")}</button>}
       </form>}
-      {returning && <div className="return-help"><a href="#/restore">{t("সদস্যের আমন্ত্রণ টোকেন দিন")}</a><p>আমন্ত্রিত সদস্য হলে নতুন ফোনে অ্যাডমিনের পাঠানো প্রবেশের লিংক খুলুন।</p></div>}
+      {returning && <div className="return-help"><a href="#/restore">{t("সদস্যের আমন্ত্রণ টোকেন দিন")}</a><a href="#/member-setup">{t("পুরোনো সদস্যের লগইন তৈরি করুন")}</a></div>}
       {!returning && !create && <a href="#/">{t("শুরুতে ফিরুন")}</a>}
       </div>
     </main>

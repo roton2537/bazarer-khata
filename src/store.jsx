@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, rpc, q } from './lib/supabase.js';
-import { todayDhaka, monthOf } from './lib/format.js';
+import { todayDhaka, monthOf, addMonths } from './lib/format.js';
 import { useToast } from './ui.jsx';
 
 const Ctx = createContext(null);
@@ -42,7 +42,7 @@ export function StoreProvider({ session, children }) {
     const my = ++seq.current;
     setLoading(true); setError('');
     try {
-      const [members, pauses, purchases, report, months, corrections, events, payRows] = await Promise.all([
+      const [members, pauses, purchases, report, months, corrections, events, payRows, closures] = await Promise.all([
         q(supabase.from('members').select('*').eq('group_id', g).order('seq')),
         q(supabase.from('pauses').select('*').eq('group_id', g)),
         q(supabase.from('purchases').select('*, purchase_items(*), purchase_shares(*)').eq('group_id', g).eq('month', m)
@@ -52,10 +52,11 @@ export function StoreProvider({ session, children }) {
         rpc('list_corrections', { p_group: g, p_month: m }),
         q(supabase.from('events').select('*').eq('group_id', g).order('created_at', { ascending: false }).limit(80)),
         q(supabase.from('payments').select('id,kind,note,reminded_at').eq('group_id', g).eq('month', m)),
+        q(supabase.from('closed_dates').select('ledger_date,report').eq('group_id',g).gte('ledger_date',m).lt('ledger_date',addMonths(m,1)).order('ledger_date',{ascending:false})),
       ]);
       const paymentMeta = Object.fromEntries((payRows || []).map((r) => [r.id, r]));
       if (my !== seq.current) return;
-      setData({ members, pauses, purchases, report, months, corrections, events, paymentMeta, gid: g, month: m });
+      setData({ members, pauses, purchases, report, months, corrections, events, paymentMeta, closures, gid: g, month: m });
     } catch (e) { if (my === seq.current) { setError(e.message); toast(e.message, true); } }
     finally { if (my === seq.current) setLoading(false); }
   }, [toast]);

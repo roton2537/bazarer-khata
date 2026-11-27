@@ -1,3 +1,4 @@
+import { MemberCredentials, MEMBER_DOMAIN } from './screens/MemberCredentials.jsx';
 import React, { useEffect, useState } from 'react';
 import { supabase, configured } from './lib/supabase.js';
 import { ToastProvider, Spinner } from './ui.jsx';
@@ -66,7 +67,7 @@ function Root() {
   if (hash === '#/restore') return <OpenLedger signedIn={!!session} />;
   if (hash === '#/open' && !session) return <AuthScreen key="open" returning />;
   if (hash === '#/create') {
-    if (!session?.user.email || session.user.is_anonymous) return <AuthScreen key="admin" create />;
+    if (!session?.user.email || session.user.is_anonymous || session.user.email.endsWith(MEMBER_DOMAIN)) return <AuthScreen key="admin" create />;
     return <Onboarding user={session.user} />;
   }
   if (!session) {
@@ -80,7 +81,8 @@ function Root() {
 
 function Authed({ hash, invite }) {
   const s = useStore();
-  if (hash === '#/account') return <Account />;
+  if (s.memberships?.some(m => !m.left_on && m.role === 'member') && !s.session.user.email) return <MemberCredentials onDone={() => go('#/')} />;
+  if (hash === '#/account' || hash === '#/member-setup') return <Account />;
   if (s.error && (!s.memberships || !s.data)) return <main className="app no-nav"><section className="card stack" role="alert"><h1>খাতা লোড করা যায়নি</h1><p>{s.error}</p><button className="btn" disabled={s.loading} onClick={() => s.refresh().catch(() => {})}>আবার চেষ্টা করুন</button><a href="#/account">আমার অ্যাকাউন্ট</a></section></main>;
   if (!s.memberships) return <div className="app no-nav center"><Spinner /></div>;
   if (invite) return <Invite key={invite} code={invite} />;

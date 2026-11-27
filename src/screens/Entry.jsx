@@ -1,3 +1,4 @@
+import { MEMBER_DOMAIN } from './MemberCredentials.jsx';
 import { captchaToken } from '../lib/captcha.js';
 import React, { useEffect, useState } from 'react';
 import { supabase, rpc, errText } from '../lib/supabase.js';
@@ -82,7 +83,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
         if (error) throw new Error(errText(error));
         if (!data.session) { setMode('verify'); setPw(''); setInfo('আপনার ইমেইলে একটি নিশ্চিতকরণ লিংক পাঠানো হয়েছে। লিংকে ক্লিক করে তারপর খাতায় ফিরে আসুন।'); }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pw, options: { captchaToken: await captchaToken() } });
+        const { error } = await supabase.auth.signInWithPassword({ email: returning && !email.includes('@') ? email.trim().toLowerCase() + MEMBER_DOMAIN : email.trim(), password: pw, options: { captchaToken: await captchaToken() } });
         if (error) throw new Error(errText(error));
       }
     });
@@ -93,7 +94,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
       {(create || returning) ? <header><img src="/icon.svg" alt="" width="32" height="32" /><strong className="khai-entry-mark">KHAI KHAI</strong><a href="#/">← ফিরে যান</a></header> : <Brand />}
       <div className={(create || returning) ? 'kh-new-body' : undefined}>
       {invite && <div className="banner green">{group.name ? 'আমন্ত্রণ · ' + group.name : group.error || 'আমন্ত্রণ দেখা হচ্ছে…'}</div>}
-      {returning && <><h1>আমার খাতা খুলুন</h1><p className="kh-admin-intro">আগের খাতায় ফিরতে আপনার ইমেইল ও পাসওয়ার্ড দিন।</p></>}
+      {returning && <><h1>আমার খাতা খুলুন</h1><p className="kh-admin-intro">সদস্য হলে ইউজারনেম, অ্যাডমিন হলে ইমেইল দিয়ে প্রবেশ করুন।</p></>}
       {create && <><h1>আপনার অ্যাকাউন্ট</h1><p className="kh-admin-intro">নতুন খাতা খুলতে অ্যাকাউন্ট তৈরি করুন অথবা আপনার অ্যাকাউন্টে সাইন ইন করুন।</p></>}
       {mode === 'verify' ? <section className="card stack"><h2>ইমেইল চেক করুন</h2><strong>{email}</strong><p role="status">{info}</p>
         <Btn busy={busy} onClick={() => run(async () => {
@@ -107,7 +108,7 @@ export function AuthScreen({ invite, create, returning, initialMode }) {
           <button type="button" className={mode === 'up' ? 'on' : ''} onClick={() => switchMode('up')}>নতুন অ্যাকাউন্ট</button>
         </div>}
         {mode === 'up' ? <Field label="আপনার নাম"><input type="text" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required /></Field> : null}
-        <Field label="ইমেইল"><input type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required /></Field>
+        <Field label={returning && mode === 'in' ? "ইউজারনেম বা ইমেইল" : "ইমেইল"}><input type={returning && mode === 'in' ? "text" : "email"} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete={returning ? "username" : "email"} required /></Field>
         {mode !== 'forgot' && <Field label="পাসওয়ার্ড" hint={mode === 'up' ? 'অন্তত ৬ অক্ষর' : undefined}>
           <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete={mode === 'up' ? 'new-password' : 'current-password'} required minLength={6} />
         </Field>}
@@ -167,7 +168,7 @@ export function Invite({ code }) {
     s.setGid(id); await s.refresh(); go('#/');
   });
   return <main className="app no-nav"><Brand /><section className="card stack">
-    <h2>{group.name || 'খাতার আমন্ত্রণ'}</h2><p>{s.session.user.email}</p>
+    <h2>{group.name || 'খাতার আমন্ত্রণ'}</h2><p>{s.session.user.email?.replace(MEMBER_DOMAIN,'')}</p>
     {group.error ? <><p role="alert">{group.error}</p><button onClick={group.retry} className="btn secondary">আবার চেষ্টা করুন</button></> :
       <><p>আমন্ত্রিত ইমেইল দিয়ে যোগদান নিশ্চিত করুন। নতুন সদস্যের বাজারের ভাগ আজ থেকে ধরা হবে।</p>
       <Btn busy={busy} disabled={!group.name} onClick={open}>এই খাতায় যোগ দিন</Btn></>}
@@ -205,7 +206,7 @@ export function Account() {
   };
 
   return <main className="app no-nav"><section className="card stack"><h2>আমার অ্যাকাউন্ট</h2>
-    <p>{s.profile?.name}</p><p>{s.session.user.email}</p>
+    <p>{s.profile?.name}</p><p>{s.session.user.email?.replace(MEMBER_DOMAIN,'')}</p>
     {s.session.user.email && <a className="btn secondary" href="#/recover">পাসওয়ার্ড বদলান</a>}
     {!s.session.user.email && <AddEmail />}
     <Btn busy={busy} onClick={() => run(async () => {const {error} = await supabase.auth.signOut({scope:'local'}); if(error) throw error; go('#/');})}>সাইন আউট</Btn>

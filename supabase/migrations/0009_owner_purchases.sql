@@ -66,7 +66,7 @@ create or replace function private.is_admin(g uuid) returns boolean
 language sql stable security definer set search_path = '' as $$
  select exists (select 1 from public.members m join auth.users u on u.id=m.user_id
  where m.group_id=g and m.user_id=auth.uid() and m.left_on is null and m.role='admin'
- and nullif(u.email,'') is not null)
+ and nullif(u.email,'') is not null and lower(u.email) not like '%@members.bazarer-khata.invalid')
 $$;
 
 -- Member invitations can create one membership, never assume an existing identity.
@@ -116,7 +116,7 @@ create or replace function private.check_admin_email() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
   if new.role='admin' and new.left_on is null and not exists (
-    select 1 from auth.users where id=new.user_id and nullif(email,'') is not null
+    select 1 from auth.users where id=new.user_id and nullif(email,'') is not null and lower(email) not like '%@members.bazarer-khata.invalid'
   ) then raise exception 'অ্যাডমিন হতে আগে ইমেইল অ্যাকাউন্ট যুক্ত করুন।'; end if;
   return new;
 end $$;

@@ -30,7 +30,7 @@ const T = {
 };
 const tables = { members, pauses: [], purchases, events: ev };
 function chain(table) {
-  const c = { select: () => c, eq: () => c, is: () => c, order: () => c, limit: () => c, maybeSingle: () => c, single: () => c,
+  const c = { select: () => c, eq: () => c, gte: () => c, lt: () => c, is: () => c, order: () => c, limit: () => c, maybeSingle: () => c, single: () => c,
     then: (res) => { let d = tables[table] || [];
       if (table === 'members') { d = (c._mine ? T.members : members); }
       if (table === 'profiles') d = T.profiles;

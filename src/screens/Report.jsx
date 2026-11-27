@@ -15,7 +15,7 @@ export default function Report() {
   const today = todayDhaka();
   const canPay = !finalized && s.month <= monthOf(today) && !!s.me;
   const [paySheet, setPaySheet] = useState(null);
-  const [finSheet, setFinSheet] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(s.month === monthOf(today) ? today : s.month);
   const [ask, confirmNode] = useConfirm();
   const [busy, run] = useAction();
   const meId = s.me?.id;
@@ -53,21 +53,10 @@ export default function Report() {
   const pendingCorr = s.data.corrections.filter((c) => c.status === 'pending');
   const doneCorr = s.data.corrections.filter((c) => c.status !== 'pending');
 
-  const startFinalize = async () => {
-    const ok = await ask({ title: `${monthLabel(s.month)} মাসের হিসাব চূড়ান্ত করবেন?`,
-      body: 'চূড়ান্ত করলে এই মাসের কোনো বাজার, ভাগ বা পরিশোধ আর বদলানো যাবে না। যাঁদের টাকা বাকি আছে, তা এই মাসের রিপোর্টেই বাকি দেখাবে। নতুন মাসের হিসাব শূন্য থেকে শুরু হবে।',
-      confirmText: 'এগিয়ে যান' });
-    if (!ok) return;
-    run(async () => {
-      const r = await rpc('finalize_month', { p_group: s.gid, p_month: s.month, p_force: false });
-      if (!r.ok) setFinSheet(r); else { await reload(); toast('হিসাব চূড়ান্ত হয়েছে।'); }
-    });
+  const closeDate = async () => {
+    if (!await ask({title: dayLabel(selectedDate) + ' তারিখের বাজার বন্ধ করবেন?', body:'এই দিনের খরচ ও ভাগ সংরক্ষিত থাকবে। একই সদস্যরা অন্য তারিখে বাজার লিখতে পারবেন।', confirmText:'তারিখ বন্ধ করুন'})) return;
+    run(async () => { await rpc('close_ledger_date', {p_group:s.gid,p_date:selectedDate}); await reload(); }, 'তারিখ বন্ধ হয়েছে।');
   };
-  const forceFinalize = () => run(async () => {
-    await rpc('finalize_month', { p_group: s.gid, p_month: s.month, p_force: true });
-    setFinSheet(null); await reload();
-  }, 'হিসাব চূড়ান্ত হয়েছে।');
-
   const printName = `${s.group.name} — ${monthLabel(s.month)} ${finalized ? '(চূড়ান্ত)' : '(খসড়া)'}`;
 
   return (
@@ -78,7 +67,7 @@ export default function Report() {
         <div className="row between" style={{ marginTop: 6 }}><span className="muted">মোট বাজার</span><b style={{ fontSize: 22 }}>{fmtMoney(rep.total, g)}</b></div>
         <div className="khai-outstanding"><div>এখনো বাকি: {fmtMoney(outstanding, g)}</div><div className="small muted">{outstanding ? 'পরিশোধ প্রাপক নিশ্চিত করলে অবশিষ্ট হিসাব কমবে।' : 'সব হিসাব মিটেছে ✓'}</div></div>
         {finalized ? <p className="small muted">চূড়ান্ত করেছেন {rep.finalized_by_name || 'অ্যাডমিন'} · {dateLabel(new Date(rep.finalized_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }))}</p>
-          : <p className="small muted">এটি খসড়া রিপোর্ট। অ্যাডমিন চূড়ান্ত করার আগে বদলাতে পারে।</p>}
+          : <p className="small muted">এই মাসের মোট হিসাবে খোলা ও বন্ধ তারিখের বাজার রয়েছে।</p>}
         <div className="btn-row noprint">
           <button className="btn small secondary" onClick={shareSummary}>সারাংশ শেয়ার করুন</button>
           <button className="btn small secondary" onClick={() => window.print()}>PDF / প্রিন্ট</button>
@@ -153,23 +142,18 @@ export default function Report() {
         <button className="btn secondary" disabled={s.data.members.filter(m => !m.left_on).length < 2} onClick={() => setAdjSheet(true)}>+ সমন্বয় যোগ করুন</button>
       </div> : null}
 
-      <div className="section noprint">
-        {s.isAdmin && !finalized && s.month <= monthOf(today) ? <Btn busy={busy} onClick={startFinalize}>এই মাসের হিসাব চূড়ান্ত করুন</Btn> : null}
-      </div>
+      <section className="section card stack">
+        {s.isAdmin && !finalized && <form className="stack" onSubmit={e => {e.preventDefault(); closeDate();}}>
+          <Field label="বাজার বন্ধের তারিখ"><input type="date" required min={s.month} max={s.month === monthOf(today) ? today : new Date(Date.parse(addMonths(s.month,1))-86400000).toISOString().slice(0,10)} value={selectedDate} onChange={e => setSelectedDate(e.target.value)} /></Field>
+          <Btn busy={busy} disabled={s.data.closures.some(d => d.ledger_date === selectedDate)}>এই তারিখ বন্ধ করুন</Btn>
+        </form>}
+        {s.data.closures.map(d => <details key={d.ledger_date}><summary>{dayLabel(d.ledger_date)} · বন্ধ · {fmtMoney(d.report.total,g)}</summary>
+          {d.report.purchases.map(p => <div className="item" key={p.id}><b>{p.description} · {fmtMoney(p.amount,g)}</b><div>{p.buyer}</div>{(p.shares || []).map((x,i) => <small key={i}>{x.member} · {fmtMoney(x.share,g)} </small>)}</div>)}
+        </details>)}
+      </section>
 
       {paySheet ? <PaySheet init={paySheet} onClose={() => setPaySheet(null)} /> : null}
       {adjSheet ? <AdjustSheet onClose={() => setAdjSheet(false)} /> : null}
-      {finSheet ? (
-        <Sheet title="চূড়ান্ত করার আগে দেখুন" onClose={() => setFinSheet(null)}>
-          <div className="banner red">
-            {finSheet.pending_corrections > 0 ? <p>অমীমাংসিত সংশোধনের অনুরোধ: <b>{finSheet.pending_corrections}টি</b> (এগুলো বাতিল হয়ে যাবে)</p> : null}
-            {finSheet.pending_payments > 0 ? <p>নিশ্চিত হয়নি এমন পরিশোধ: <b>{finSheet.pending_payments}টি</b> (এগুলো হিসাবে ধরা হবে না)</p> : null}
-          </div>
-          {pendingCorr.map(c => <p key={c.id} className="small break"><b>{KIND[c.kind]}</b> · {c.requested_by_name} · {c.description || c.old?.description}{c.reason && ` · ${c.reason}`}</p>)}
-          {rep.payments.filter((p) => p.status === 'pending').map((p) => <div key={p.id} className="small" style={{ marginTop: 6 }}>{p.from_name} → {p.to_name}: {fmtMoney(p.amount, g)}</div>)}
-          <p className="small muted">প্রাপকদের আগে নিশ্চিত করতে বলা বা অনুরোধগুলো নিষ্পত্তি করাই ভালো। চাইলে এখনই চূড়ান্ত করতে পারেন।</p>
-          <div className="btn-row"><button className="btn secondary" onClick={() => setFinSheet(null)}>আগে ঠিক করি</button><Btn busy={busy} className="danger" onClick={forceFinalize}>তবুও চূড়ান্ত করুন</Btn></div>
-        </Sheet>) : null}
       {confirmNode}
     </>
   );

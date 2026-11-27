@@ -19,7 +19,7 @@ export function PurchaseList() {
   };
   const [ask, confirmNode] = useConfirm();
   const [busy, run] = useAction();
-  const canEdit = (p) => s.isActive && s.data.report.status !== 'finalized' && p.buyer_id === s.me.id;
+  const canEdit = (p) => !s.data.closures.some(d => d.ledger_date === p.bazar_date) && s.isActive && s.data.report.status !== 'finalized' && p.buyer_id === s.me.id;
   const nameOf = (id) => s.data.members.find((m) => m.id === id)?.display_name || '';
   const del = async (p) => {
     const ok = await ask({ title: 'বাজারটি মুছবেন?', body: `“${p.description}” (${fmtMoney(p.amount, g)}) মুছে ফেললে সবার হিসাব থেকে এটি বাদ যাবে। খবরের তালিকায় মোছার কথা দেখাবে।`, confirmText: 'হ্যাঁ, মুছুন', danger: true });
@@ -133,7 +133,7 @@ export function PurchaseForm({ editId }) {
     const ok = await ask({ title: 'বাজারটি মুছবেন?', body: 'মুছে ফেললে সবার হিসাব থেকে এটি বাদ যাবে।', confirmText: 'হ্যাঁ, মুছুন', danger: true });
     if (ok) run(async () => { await rpc('delete_purchase', { p_id: editing.id }); await s.reloadGroup(); go('#/list'); }, 'মুছে ফেলা হয়েছে।');
   };
-  if (!s.isActive || (!editId && (s.month !== cm || s.data.report.status === 'finalized')) || (editId && (!editing || editing.buyer_id !== s.me?.id || s.data.report.status === 'finalized'))) return <div className="app no-nav"><p className="muted center" style={{ marginTop: 60 }}>বাজারটি পাওয়া যায়নি।</p><button className="btn" onClick={() => go('#/list')}>ফিরে যান</button></div>;
+  if (!s.isActive || (!editId && (s.month !== cm || s.data.report.status === 'finalized')) || (editId && (!editing || editing.buyer_id !== s.me?.id || s.data.closures.some(d => d.ledger_date === editing.bazar_date) || s.data.report.status === 'finalized'))) return <div className="app no-nav"><p className="muted center" style={{ marginTop: 60 }}>বাজারটি পাওয়া যায়নি।</p><button className="btn" onClick={() => go('#/list')}>ফিরে যান</button></div>;
 
   return (
     <div className="app no-nav">
@@ -172,7 +172,8 @@ export function PurchaseForm({ editId }) {
           )}
         </div>
         {editing ? <div style={{ marginTop: 14 }}><Btn busy={busy} type="button" className="danger secondary" onClick={remove}>বাজারটি মুছুন</Btn></div> : null}
-        <div className="cta-bar form"><Btn busy={busy} type="submit">{editing ? 'সংশোধন সংরক্ষণ করুন' : 'সংরক্ষণ করুন'}</Btn></div>
+        {s.data.closures.some(d => d.ledger_date === date) && <p role="status">এই তারিখ বন্ধ। অন্য তারিখ বেছে নিন।</p>}
+        <div className="cta-bar form"><Btn disabled={s.data.closures.some(d => d.ledger_date === date)} busy={busy} type="submit">{editing ? 'সংশোধন সংরক্ষণ করুন' : 'সংরক্ষণ করুন'}</Btn></div>
       </form>
       {confirmNode}
     </div>

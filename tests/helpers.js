@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const MIGRATION = readFileSync(join(here, '../supabase/migrations/0001_bazar_khata.sql'), 'utf8');
 
-export async function newDb() {
+export async function newDb(latest = false) {
   const db = new PGlite();
   await db.exec(`
     create role anon nologin; create role authenticated nologin;
@@ -27,6 +27,11 @@ export async function newDb() {
   await db.exec(readFileSync(join(here, '../supabase/migrations/0007_adjustments_history_testpush.sql'), 'utf8'));
   await db.exec(readFileSync(join(here, '../supabase/migrations/0008_security_index_hardening.sql'), 'utf8'));
 
+  if (latest) {
+    for (const migration of ['0009_owner_purchases.sql','0010_date_closures.sql']) {
+      await db.exec(readFileSync(join(here, '../supabase/migrations', migration), 'utf8'));
+    }
+  }
   return db;
 }
 

@@ -96,7 +96,7 @@ export default function Members({ view = 'members' }) {
 
       <div className="card">
         <h2>খাতা ও অ্যাকাউন্ট</h2>
-        <p className="small muted">{s.session.user.email || s.me?.display_name}</p>
+        <p className="small muted">{s.session.user.email?.replace('@members.bazarer-khata.invalid','') || s.me?.display_name}</p>
         <div className="stack" style={{ marginTop: 8 }}>
           {s.isAdmin && others.length > 0 ? <button className="btn secondary" onClick={() => setTransferSheet('transfer')}>অ্যাডমিনের দায়িত্ব অন্যকে দিন</button> : null}
           <button className="btn secondary" onClick={() => go('#/new-group')}>+ আরেকটি গ্রুপ খুলুন বা যোগ দিন</button>

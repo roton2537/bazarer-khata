@@ -58,6 +58,7 @@ export function Header({ title }) {
       <div className="eyebrow">{title || t("বাজারের খাতা")}</div>
       <div className="khai-masthead">
         <h1 className="khai-wordmark">MessMate</h1>
+        <LanguagePicker />
       </div>
       {s.memberships.length <= 1 && <div className="khai-groupname">{s.group.name}</div>}
       {s.memberships.length > 1 && <div className="khai-group-picker">
@@ -65,7 +66,6 @@ export function Header({ title }) {
           {s.memberships.map(m => <option key={m.group_id} value={m.group_id}>{m.groups.name}</option>)}
         </select>
       </div>}
-      <LanguagePicker />
       <div className="monthbar">
         <button type="button" className="nb" aria-label={t("আগের মাস")} disabled={s.month <= oldest} onClick={() => s.setMonth(addMonths(s.month, -1))}>‹</button>
         <div className="lbl">{monthLabel(s.month)} {finalized ? <Tag>{t("চূড়ান্ত")}</Tag> : <Tag kind="amber">{t("খসড়া")}</Tag>}</div>

@@ -58,6 +58,9 @@ export function Header({ title }) {
   return (
     <header className="topbar centered-header">
       <div className="khai-masthead">
+        <a className="header-account noprint" href="#/account" aria-label={t("আমার অ্যাকাউন্ট")} title={t("আমার অ্যাকাউন্ট")}>
+          <Avatar sm id={s.me?.id} name={s.profile?.name || s.me?.display_name || '?'} photo={s.profile?.avatar_data} />
+        </a>
         <h1 className="page-title">{title || t("হোম")}</h1>
       </div>
       <div className="group-language-row">

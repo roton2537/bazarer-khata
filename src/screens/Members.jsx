@@ -104,7 +104,6 @@ export default function Members({ view = 'members' }) {
         <div className="stack" style={{ marginTop: 8 }}>
           {s.isAdmin && others.length > 0 ? <button className="btn secondary" onClick={() => setTransferSheet('transfer')}>{t("অ্যাডমিনের দায়িত্ব অন্যকে দিন")}</button> : null}
           <button className="btn secondary" onClick={() => go('#/new-group')}>{t("+ আরেকটি গ্রুপ খুলুন বা যোগ দিন")}</button>
-          <button className="btn secondary" onClick={() => go('#/account')}>{t("আমার অ্যাকাউন্ট")}</button>
           <Btn busy={busy} className="secondary" onClick={() => run(async () => {
             const {error} = await supabase.auth.signOut({scope:'local'});
             if (error) throw error;

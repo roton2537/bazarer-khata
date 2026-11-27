@@ -37,6 +37,7 @@ export function Welcome({ signedIn }) {
           <a className="kh-create" href="#/create">নতুন খাতা তৈরি করুন <span aria-hidden="true">→</span></a>
           <a href={signedIn && location.hash === '#/new-group' ? '#/' : '#/open'}>আমার খাতা খুলুন</a>
           <a href="#/restore">আমন্ত্রণ টোকেন দিয়ে যোগ দিন</a>
+          {!signedIn && <a href="#/member-setup">পুরোনো সদস্যের লগইন তৈরি করুন</a>}
         </nav>
         <aside>সদস্য হিসেবে যোগ দিতে অ্যাডমিনের পাঠানো লিংক খুলুন।</aside>
       </section>

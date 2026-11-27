@@ -71,6 +71,7 @@ function Root() {
     return <Onboarding user={session.user} />;
   }
   if (!session) {
+    if (hash === '#/member-setup') return <MemberCredentials legacy onDone={() => go('#/')} />;
     if (hash.startsWith('#/recover')) return <AuthScreen key="recover" initialMode="forgot" />;
     if (invite || ['#/create', '#/signin'].includes(hash)) return <AuthScreen key={hash} invite={invite} create={hash === '#/create'} />;
     return <Welcome key={hash} signedIn={false} />;

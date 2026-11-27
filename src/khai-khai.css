@@ -14,7 +14,7 @@ body { background:#e9e2d6; color:var(--ink); font-family:'Hind Siliguri',system-
 .app.no-nav { max-width:640px; padding-bottom:28px; }
 .app .topbar { position:relative; top:auto; background:transparent; padding:calc(18px + env(safe-area-inset-top)) 0 8px; }
 .app .eyebrow { font-size:12px; font-weight:600; color:var(--muted); letter-spacing:.07em; padding-right:54px; }
-.khai-masthead { display:flex; align-items:baseline; flex-wrap:wrap; gap:8px 14px; margin-top:1px; padding-right:55px; }
+.khai-masthead { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 12px; margin-top:1px; padding-right:55px; }
 .khai-wordmark { font:900 clamp(25px,7.6vw,31px)/1.1 system-ui,-apple-system,sans-serif; letter-spacing:.025em; color:var(--ink); white-space:nowrap; }
 .khai-groupname { display:block; margin:9px 0 0; font-size:clamp(18px,4.8vw,23px); line-height:1.35; font-weight:700; color:var(--ink); max-width:100%; overflow-wrap:anywhere; }
 .khai-group-picker { width:100%; margin:7px 0 0; max-width:100%; }
@@ -132,8 +132,9 @@ body { background:#e9e2d6; color:var(--ink); font-family:'Hind Siliguri',system-
   .bell, .monthbar .nb { display:none; }
 }
 
-.language-picker { display:flex; justify-content:flex-end; gap:4px; margin:8px 0; }
-.language-picker button { border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 12px; min-height:40px; cursor:pointer; }
+.language-picker { display:flex; justify-content:flex-end; gap:2px; margin:8px 0; width:max-content; max-width:100%; padding:3px; border:1px solid var(--line); border-radius:12px; background:#fff; }
+.khai-masthead .language-picker { margin:0; }
+.language-picker button { border:1px solid transparent; background:transparent; border-radius:8px; padding:4px 9px; min-height:38px; min-width:48px; flex:1; text-align:center; cursor:pointer; font-size:13px; font-weight:700; }
 .language-picker button[aria-pressed=true] { background:var(--green); color:#fff; border-color:var(--green); }
 .mobile-quick-add { display:none; }
 @media screen and (max-width:759px) {
@@ -144,3 +145,5 @@ body { background:#e9e2d6; color:var(--ink); font-family:'Hind Siliguri',system-
 @media screen and (max-width:759px) {
   .app:has(+ .mobile-quick-add) .cta-bar:not(.form) { display:none; }
 }
+
+.khai-home .khai-hero .split { grid-template-columns:minmax(0,1fr); }

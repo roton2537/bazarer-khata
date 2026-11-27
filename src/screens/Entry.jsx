@@ -1,3 +1,4 @@
+import ProfilePhoto from './ProfilePhoto.jsx';
 import { LanguagePicker } from './parts.jsx';
 import { t } from '../lib/language.js';
 import { MEMBER_DOMAIN } from './MemberCredentials.jsx';
@@ -208,8 +209,8 @@ export function Account() {
     if (ok) run(async () => { await rpc('delete_my_account'); await supabase.auth.signOut(); go('#/'); }, 'অ্যাকাউন্ট মুছে ফেলা হয়েছে।');
   };
 
-  return <main className="app no-nav"><section className="card stack"><h2>{t("আমার অ্যাকাউন্ট")}</h2>
-    <p>{s.profile?.name}</p><p>{s.session.user.email?.replace(MEMBER_DOMAIN,'')}</p>
+  return <main className="app no-nav"><section className="card stack account-profile"><h2 className="center">{t("আমার অ্যাকাউন্ট")}</h2>
+    <ProfilePhoto /><p className="center muted break">{s.session.user.email?.replace(MEMBER_DOMAIN,'')}</p>
     {s.session.user.email && <a className="btn secondary" href="#/recover">{t("পাসওয়ার্ড বদলান")}</a>}
     {!s.session.user.email && <AddEmail />}
     <Btn busy={busy} onClick={() => run(async () => {const {error} = await supabase.auth.signOut({scope:'local'}); if(error) throw error; go('#/');})}>{t("সাইন আউট")}</Btn>

@@ -6,9 +6,11 @@ import { Tag, useAction } from '../ui.jsx';
 import { go } from '../App.jsx';
 
 const COLORS = ['#2f7a50', '#b0652a', '#4a6fa5', '#8a4f8f', '#a8483d', '#3d8a8a', '#7a7a2f', '#6b5b95'];
-export function Avatar({ name = '?', id = '', sm }) {
+export function Avatar({ name = '?', id = '', sm, photo }) {
+  const store = useStore();
+  const image = photo || store?.data?.photos?.[id];
   let h = 0; for (const c of String(id || name)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return <span className={`avatar ${sm ? 'sm' : ''}`} style={{ background: COLORS[h % COLORS.length] }} aria-hidden="true">{Array.from(name.trim())[0] || '?'}</span>;
+  return <span className={`avatar ${sm ? 'sm' : ''}`} style={{ background: COLORS[h % COLORS.length] }} aria-hidden="true">{image ? <img src={image} alt="" loading="lazy" /> : Array.from(name.trim())[0] || '?'}</span>;
 }
 
 export function Icon({ name }) {
@@ -54,10 +56,9 @@ export function Header({ title }) {
   const newest = ms[0] && ms[0] > cm ? ms[0] : cm;
   const oldest = ms[ms.length - 1] || cm;
   return (
-    <header className="topbar">
+    <header className="topbar centered-header">
       <div className="khai-masthead">
-        <h1 className="khai-wordmark">MessMate</h1>
-        <span className="eyebrow">{title || t("বাজারের খাতা")}</span>
+        <h1 className="page-title">{title || t("হোম")}</h1>
       </div>
       <div className="group-language-row">
         {s.memberships.length <= 1 && <div className="khai-groupname">{s.group.name}</div>}
@@ -66,7 +67,6 @@ export function Header({ title }) {
             {s.memberships.map(m => <option key={m.group_id} value={m.group_id}>{m.groups.name}</option>)}
           </select>
         </div>}
-        <LanguagePicker />
       </div>
       <div className="monthbar">
         <button type="button" className="nb" aria-label={t("আগের মাস")} disabled={s.month <= oldest} onClick={() => s.setMonth(addMonths(s.month, -1))}>‹</button>

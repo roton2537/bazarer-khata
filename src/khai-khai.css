@@ -160,3 +160,51 @@ body { background:#e9e2d6; color:var(--ink); font-family:'Hind Siliguri',system-
   .group-language-row .language-picker button { padding:2px 8px; min-height:40px; }
   .app .monthbar .lbl { padding:5px 6px; font-size:14px; }
 }
+
+/* Shared mobile page rhythm and centered titles. */
+.centered-header .khai-masthead { display:grid; place-items:center; padding:0 50px; min-height:44px; }
+.app .centered-header .page-title { padding:0; text-align:center; font-size:22px; line-height:1.25; overflow-wrap:anywhere; }
+.centered-header .group-language-row { justify-content:center; text-align:center; margin:0; }
+.centered-header .khai-groupname { font-size:13px; color:var(--muted); font-weight:600; }
+.centered-header .khai-group-picker { max-width:260px; text-align:center; }
+.settings-language { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.settings-language .language-picker { margin:0; }
+.avatar { overflow:hidden; }
+.avatar img { width:100%; height:100%; object-fit:cover; }
+.profile-photo { text-align:center; }
+.profile-avatar { display:flex; justify-content:center; }
+.profile-avatar .avatar { width:96px; height:96px; font-size:32px; }
+.report-overview { background:linear-gradient(145deg,#145a37,#1a6b42)!important; color:white; }
+.report-overview .muted { color:#deeee4; }
+.report-overview .khai-outstanding { background:#ffffff20; }
+.report-overview .btn.secondary { background:white; color:#145a37; }
+.product-report .report-filter { border:1px solid var(--line); border-radius:12px; padding:10px; }
+.report-filter summary { font-weight:700; cursor:pointer; }
+.report-filter-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+.report-filter-grid .field:first-child,.report-filter-grid .btn { grid-column:1/-1; }
+.product-table { width:100%; table-layout:fixed; border-collapse:collapse; text-align:left; font-size:14px; }
+.product-table th { background:#eef6ef; padding:9px 5px; overflow-wrap:anywhere; }
+.product-table td { padding:10px 5px!important; overflow-wrap:anywhere; }
+.product-table th:first-child { width:44%; }
+.product-table th:nth-child(2) { width:21%; }
+.product-table tfoot th { border-top:1px solid var(--line); }
+@media screen and (max-width:759px) {
+  .app .card { padding:13px; border-radius:16px; }
+  .app .section { margin-top:17px; }
+  .app .topbar { padding-bottom:8px; }
+  .app .row { min-width:0; }
+  .app .btn-row .btn { min-width:min(120px,100%); }
+  .app .member-tags { max-width:112px; }
+  .app input[type=date] { min-width:0; }
+  .product-table { font-size:12px; }
+}
+@media print { .report-overview { background:white!important; color:var(--ink); } .report-overview .muted { color:var(--muted); } }
+.settings-profile { margin:12px 0; }
+.form-header .row { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; gap:8px; }
+.app .form-header h1 { text-align:center; padding:0; font-size:20px; }
+@media screen and (max-width:420px) {
+  .product-entry-row { gap:6px; }
+  .product-entry-row .btn { min-width:38px; min-height:44px; padding:0; }
+  .report-filter-grid { grid-template-columns:minmax(0,1fr); }
+}
+.account-profile a.btn { display:flex; justify-content:center; align-items:center; text-align:center; }

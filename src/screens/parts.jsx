@@ -55,9 +55,9 @@ export function Header({ title }) {
   const oldest = ms[ms.length - 1] || cm;
   return (
     <header className="topbar">
-      <div className="eyebrow">{title || t("বাজারের খাতা")}</div>
       <div className="khai-masthead">
         <h1 className="khai-wordmark">MessMate</h1>
+        <span className="eyebrow">{title || t("বাজারের খাতা")}</span>
       </div>
       <div className="group-language-row">
         {s.memberships.length <= 1 && <div className="khai-groupname">{s.group.name}</div>}

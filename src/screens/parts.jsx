@@ -1,7 +1,8 @@
+import { t, useLanguage } from '../lib/language.js';
 import React from 'react';
 import { useStore } from '../store.jsx';
 import { fmtMoney, monthLabel, addMonths, monthOf, todayDhaka, balanceText, dayLabel } from '../lib/format.js';
-import { Tag } from '../ui.jsx';
+import { Tag, useAction } from '../ui.jsx';
 import { go } from '../App.jsx';
 
 const COLORS = ['#2f7a50', '#b0652a', '#4a6fa5', '#8a4f8f', '#a8483d', '#3d8a8a', '#7a7a2f', '#6b5b95'];
@@ -36,6 +37,15 @@ export function Skeleton() {
   </div>;
 }
 
+export function LanguagePicker(){
+  const {language,setLanguage}=useLanguage();
+  const [busy,run]=useAction();
+  return <div className="language-picker" aria-label="Language / ভাষা">
+    <button type="button" disabled={busy} aria-pressed={language===t("en")} onClick={()=>run(()=>setLanguage(t("en")))}>EN</button>
+    <button type="button" disabled={busy} aria-pressed={language==='bn'} onClick={()=>run(()=>setLanguage('bn'))}>বাংলা</button>
+  </div>;
+}
+
 export function Header({ title }) {
   const s = useStore();
   const ms = s.data.months.map(m => m.month);
@@ -45,27 +55,28 @@ export function Header({ title }) {
   const oldest = ms[ms.length - 1] || cm;
   return (
     <header className="topbar">
-      <div className="eyebrow">{title || 'বাজারের খাতা'}</div>
+      <div className="eyebrow">{title || t("বাজারের খাতা")}</div>
       <div className="khai-masthead">
         <h1 className="khai-wordmark">KHAI KHAI</h1>
         {s.memberships.length <= 1 && <span className="khai-groupname">{s.group.name}</span>}
       </div>
       {s.memberships.length > 1 && <div className="khai-group-picker">
-        <select aria-label="গ্রুপ বদলান" value={s.gid} onChange={e => {s.setGid(e.target.value); go('#/');}}>
+        <select aria-label={t("গ্রুপ বদলান")} value={s.gid} onChange={e => {s.setGid(e.target.value); go('#/');}}>
           {s.memberships.map(m => <option key={m.group_id} value={m.group_id}>{m.groups.name}</option>)}
         </select>
       </div>}
+      <LanguagePicker />
       <div className="monthbar">
-        <button type="button" className="nb" aria-label="আগের মাস" disabled={s.month <= oldest} onClick={() => s.setMonth(addMonths(s.month, -1))}>‹</button>
-        <div className="lbl">{monthLabel(s.month)} {finalized ? <Tag>চূড়ান্ত</Tag> : <Tag kind="amber">খসড়া</Tag>}</div>
-        <button type="button" className="nb" aria-label="পরের মাস" disabled={s.month >= newest} onClick={() => s.setMonth(addMonths(s.month, 1))}>›</button>
+        <button type="button" className="nb" aria-label={t("আগের মাস")} disabled={s.month <= oldest} onClick={() => s.setMonth(addMonths(s.month, -1))}>‹</button>
+        <div className="lbl">{monthLabel(s.month)} {finalized ? <Tag>{t("চূড়ান্ত")}</Tag> : <Tag kind="amber">{t("খসড়া")}</Tag>}</div>
+        <button type="button" className="nb" aria-label={t("পরের মাস")} disabled={s.month >= newest} onClick={() => s.setMonth(addMonths(s.month, 1))}>›</button>
       </div>
-      {s.me?.left_on && <div className="banner">আপনি এই গ্রুপ ছেড়েছেন। আগের হিসাব দেখা ও বাকি টাকা মেটানো যাবে।</div>}
+      {s.me?.left_on && <div className="banner">{t("আপনি এই গ্রুপ ছেড়েছেন। আগের হিসাব দেখা ও বাকি টাকা মেটানো যাবে।")}</div>}
     </header>
   );
 }
 
 export function Balance({ value, g }) {
   const cls = value > 0 ? 'pos' : value < 0 ? 'neg' : 'zero';
-  return <span className={cls}>{value === 0 ? 'মিটেছে ✓' : `${fmtMoney(Math.abs(value), g)} ${balanceText(value)}`}</span>;
+  return <span className={cls}>{value === 0 ? t("মিটেছে ✓") : `${fmtMoney(Math.abs(value), g)} ${balanceText(value)}`}</span>;
 }

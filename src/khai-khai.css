@@ -131,3 +131,16 @@ body { background:#e9e2d6; color:var(--ink); font-family:'Hind Siliguri',system-
   .app:not(.no-nav) { max-width:none; min-height:0; padding:0; }
   .bell, .monthbar .nb { display:none; }
 }
+
+.language-picker { display:flex; justify-content:flex-end; gap:4px; margin:8px 0; }
+.language-picker button { border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 12px; min-height:40px; cursor:pointer; }
+.language-picker button[aria-pressed=true] { background:var(--green); color:#fff; border-color:var(--green); }
+.mobile-quick-add { display:none; }
+@media screen and (max-width:759px) {
+  .mobile-quick-add { position:fixed; display:grid; place-items:center; right:18px; bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px); width:56px; height:56px; border-radius:50%; background:var(--green); color:#fff; z-index:12; box-shadow:0 6px 18px #145a3750; }
+  .mobile-quick-add svg { width:28px; height:28px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; }
+  .app:has(+ .mobile-quick-add) { padding-bottom:calc(var(--nav-h) + 94px + env(safe-area-inset-bottom)); }
+}
+@media screen and (max-width:759px) {
+  .app:has(+ .mobile-quick-add) .cta-bar:not(.form) { display:none; }
+}

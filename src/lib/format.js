@@ -1,7 +1,8 @@
+import {language,t} from './language.js';
 // টাকা মুদ্রার ক্ষুদ্রতম এককে (পয়সা) রাখা হয়; এখানে শুধু ইনপুট পার্স ও প্রদর্শন।
 const BN = '০১২৩৪৫৬৭৮৯';
 export const toEnDigits = (s) => String(s ?? '').replace(/[০-৯]/g, (d) => String(BN.indexOf(d)));
-export const toBnDigits = (s) => String(s).replace(/[0-9]/g, (d) => BN[Number(d)]);
+export const toBnDigits = (s) => language() === 'en' ? toEnDigits(s) : String(s).replace(/[0-9]/g, (d) => BN[Number(d)]);
 
 export const MONTHS = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
 
@@ -48,7 +49,7 @@ export function fmtNum(minor, decimals = 2) {
   if (frac) t += '.' + String(frac).padStart(decimals, '0');
   return toBnDigits((neg ? '-' : '') + t);
 }
-export const fmtMoney = (minor, g) => `${fmtNum(minor, g?.currency_decimals ?? 2)} ${g?.currency_name ?? 'টাকা'}`;
+export const fmtMoney = (minor, g) => `${fmtNum(minor, g?.currency_decimals ?? 2)} ${language()==='en' ? g?.currency_code || 'BDT' : g?.currency_name ?? 'টাকা'}`;
 export const fmtShort = (minor, g) => `${g?.currency_symbol ?? '৳'}${fmtNum(minor, g?.currency_decimals ?? 2)}`;
 // ইনপুট বক্সে দেখানোর জন্য (কমা ছাড়া, ইংরেজি অঙ্ক)
 export function minorToInput(minor, decimals = 2) {
@@ -68,8 +69,9 @@ export function addMonths(m, n) {
   const t = y * 12 + (mo - 1) + n;
   return `${Math.floor(t / 12)}-${pad((t % 12) + 1)}-01`;
 }
-export const monthLabel = (m) => `${MONTHS[Number(m.slice(5, 7)) - 1]} ${toBnDigits(m.slice(0, 4))}`;
-export const dayLabel = (d) => `${toBnDigits(Number(d.slice(8, 10)))} ${MONTHS[Number(d.slice(5, 7)) - 1]}`;
+const months = () => language() === 'en' ? ['January','February','March','April','May','June','July','August','September','October','November','December'] : MONTHS;
+export const monthLabel = (m) => `${months()[Number(m.slice(5, 7)) - 1]} ${toBnDigits(m.slice(0, 4))}`;
+export const dayLabel = (d) => `${toBnDigits(Number(d.slice(8, 10)))} ${months()[Number(d.slice(5, 7)) - 1]}`;
 export const dateLabel = (d) => `${dayLabel(d)} ${toBnDigits(d.slice(0, 4))}`;
 export function timeAgo(iso) {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
@@ -85,5 +87,5 @@ export function correctionWindowOpen(month, today) {
   const d = new Date(next + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1);
   return today >= next && today <= d.toISOString().slice(0, 10);
 }
-export const balanceText = (b) => (b > 0 ? 'পাবেন' : b < 0 ? 'দেবেন' : 'মিটেছে');
+export const balanceText = (b) => t(b > 0 ? 'পাবেন' : b < 0 ? 'দেবেন' : 'মিটেছে');
 export const newToken = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 3) | 8).toString(16); }));

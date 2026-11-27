@@ -1,3 +1,4 @@
+import { t } from '../lib/language.js';
 import React, {useState} from 'react';
 import {useStore} from '../store.jsx';
 import {fmtMoney, toBnDigits} from '../lib/format.js';
@@ -22,18 +23,18 @@ export default function ProductReport(){
   }
   const products=[...rows.values()].sort((a,b)=>b.total-a.total);
   return <section className="card section stack">
-    <h2>পণ্যভিত্তিক রিপোর্ট</h2>
+    <h2>{t("পণ্যভিত্তিক রিপোর্ট")}</h2>
     <div className="noprint">
-      <Field label="পণ্য খুঁজুন"><input type="search" value={search} onChange={e=>setSearch(e.target.value)}/></Field>
-      <Field label="ক্রেতা"><select value={buyer} onChange={e=>setBuyer(e.target.value)}><option value="">সব সদস্য</option>{s.data.members.map(m=><option key={m.id} value={m.id}>{m.display_name}</option>)}</select></Field>
-      <Field label="তারিখ"><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></Field>
-      <button className="btn small secondary" onClick={()=>{setSearch('');setBuyer('');setDate('');}}>সব পণ্য দেখুন</button>
+      <Field label={t("পণ্য খুঁজুন")}><input type="search" value={search} onChange={e=>setSearch(e.target.value)}/></Field>
+      <Field label={t("ক্রেতা")}><select value={buyer} onChange={e=>setBuyer(e.target.value)}><option value="">{t("সব সদস্য")}</option>{s.data.members.map(m=><option key={m.id} value={m.id}>{m.display_name}</option>)}</select></Field>
+      <Field label={t("তারিখ")}><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></Field>
+      <button className="btn small secondary" onClick={()=>{setSearch('');setBuyer('');setDate('');}}>{t("সব পণ্য দেখুন")}</button>
     </div>
     <table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}>
-      <thead><tr><th>পণ্য</th><th style={{textAlign:'center'}}>কতবার</th><th style={{textAlign:'right'}}>মোট খরচ</th></tr></thead>
+      <thead><tr><th>{t("পণ্য")}</th><th style={{textAlign:'center'}}>{t("কতবার")}</th><th style={{textAlign:'right'}}>{t("মোট খরচ")}</th></tr></thead>
       <tbody>{products.map(p=><tr key={p.name} style={{borderTop:'1px solid var(--line)'}}><td className="break" style={{padding:'10px 0'}}>{p.name}</td><td style={{textAlign:'center'}}>{toBnDigits(p.count)}</td><td style={{textAlign:'right'}}>{fmtMoney(p.total,s.group)}</td></tr>)}</tbody>
-      <tfoot><tr><th>সর্বমোট</th><th style={{textAlign:'center'}}>{toBnDigits(products.reduce((n,p)=>n+p.count,0))}</th><th style={{textAlign:'right'}}>{fmtMoney(products.reduce((n,p)=>n+p.total,0),s.group)}</th></tr></tfoot>
+      <tfoot><tr><th>{t("সর্বমোট")}</th><th style={{textAlign:'center'}}>{toBnDigits(products.reduce((n,p)=>n+p.count,0))}</th><th style={{textAlign:'right'}}>{fmtMoney(products.reduce((n,p)=>n+p.total,0),s.group)}</th></tr></tfoot>
     </table>
-    {!products.length&&<p className="muted">কোনো পণ্য পাওয়া যায়নি।</p>}
+    {!products.length&&<p className="muted">{t("কোনো পণ্য পাওয়া যায়নি।")}</p>}
   </section>;
 }

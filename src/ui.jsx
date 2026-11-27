@@ -1,7 +1,8 @@
+import { t, language } from './lib/language.js';
 import { createPortal } from 'react-dom';
 import React, { createContext, useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
 
-export function Spinner() { return <span className="spin" aria-label="লোড হচ্ছে" />; }
+export function Spinner() { return <span className="spin" aria-label={t("লোড হচ্ছে")} />; }
 
 export function Btn({ busy, children, className = '', ...p }) {
   return (
@@ -68,15 +69,15 @@ export function useConfirm() {
       <div className="stack">
         {typeof st.body === 'string' ? <p className="break" style={{ whiteSpace: 'pre-line' }}>{st.body}</p> : st.body}
         {st.requireText ? (
-          <Field label={`নিশ্চিত করতে “${st.requireText}” লিখুন`}>
+          <Field label={language()==='en' ? `Type “${st.requireText}” to confirm` : `নিশ্চিত করতে “${st.requireText}” লিখুন`}>
             <input type="text" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
           </Field>
         ) : null}
       </div>
       <div className="btn-row">
-        <button className="btn secondary" onClick={() => done(false)}>না, থাক</button>
+        <button className="btn secondary" onClick={() => done(false)}>{t("না, থাক")}</button>
         <button className={`btn ${st.danger ? 'danger' : ''}`} disabled={st.requireText ? typed.trim() !== st.requireText : false} onClick={() => done(true)}>
-          {st.confirmText || 'হ্যাঁ'}
+          {st.confirmText || t("হ্যাঁ")}
         </button>
       </div>
     </Sheet>
@@ -110,7 +111,7 @@ export function useAction() {
     if (lock.current) return undefined;
     lock.current = true; setBusy(true);
     try { const r = await fn(); if (okMsg) toast(okMsg); return r === undefined ? true : r; }
-    catch (e) { toast(e.message || 'কিছু একটা ভুল হয়েছে।', true); return undefined; }
+    catch (e) { toast(e.message || t("কিছু একটা ভুল হয়েছে।"), true); return undefined; }
     finally { lock.current = false; setBusy(false); }
   }, [toast]);
   return [busy, run];

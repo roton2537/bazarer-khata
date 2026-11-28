@@ -14,7 +14,9 @@ Deno.serve(async (req) => {
   webpush.setVapidDetails('https://bazarer-khata-ten.vercel.app', keys.publicKey, keys.privateKey);
   const { event_id } = await req.json();
   if (!event_id) return new Response('ready');
-  const { data: record, error: lookupError } = await sb.from('events').select('id,group_id,actor_id,kind,message').eq('id', event_id).maybeSingle();
+  const chat = new URL(req.url).searchParams.get('source') === 'chat';
+  const source = chat ? sb.from('group_chat_messages').select('id,group_id,actor_id:sender_id') : sb.from('events').select('id,group_id,actor_id,kind,message');
+  const { data: record, error: lookupError } = await source.eq('id', event_id).maybeSingle();
   if (lookupError) return new Response('event lookup failed', { status: 503 });
   if (!record) return new Response('ignored');
 
@@ -26,11 +28,17 @@ Deno.serve(async (req) => {
   if (!targets.length) return new Response('no targets');
 
   const { data: profs } = await sb.from('profiles').select('id').in('id', targets).eq('push_enabled', true);
-  const ids = (profs ?? []).map((p) => p.id);
+  let ids = (profs ?? []).map((p) => p.id);
+  if (chat && ids.length) {
+    const {data: muted, error} = await sb.from('group_chat_mutes').select('user_id').eq('group_id',record.group_id).in('user_id',ids);
+    if (error) return new Response('mute lookup failed', {status:503});
+    const excluded = new Set(muted.map(row => row.user_id));
+    ids = ids.filter(id => !excluded.has(id));
+  }
   if (!ids.length) return new Response('no subscribers');
   const { data: subs } = await sb.from('push_subscriptions').select('*').in('user_id', ids);
 
-  const payload = JSON.stringify({ title: grp?.name ?? 'বাজারের খাতা', body: record.message, url: '/#/feed', tag: record.id });
+  const payload = JSON.stringify({ title: grp?.name ?? 'বাজারের খাতা', body: chat ? 'গ্রুপ চ্যাট · New message' : record.message, url: chat ? '/?ledger=' + record.group_id + '#/chat' : '/#/feed', tag: record.id });
   await Promise.all((subs ?? []).map(async (s) => {
     let endpoint;
     try { endpoint = new URL(s.endpoint); } catch { return; }

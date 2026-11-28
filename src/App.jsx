@@ -7,6 +7,7 @@ import { StoreProvider, useStore } from './store.jsx';
 import { monthOf, todayDhaka, toBnDigits } from './lib/format.js';
 import { AuthScreen, Onboarding, Welcome, Invite, Account, PasswordForm } from './screens/Entry.jsx';
 import { AcceptLink, OpenLedger } from './screens/PhoneAccess.jsx';
+import GroupChat from './screens/GroupChat.jsx';
 import Home from './screens/Home.jsx';
 import { PurchaseList, PurchaseForm } from './screens/Purchases.jsx';
 import Report from './screens/Report.jsx';
@@ -114,6 +115,7 @@ function Authed({ hash, invite }) {
   if (!s.group || !s.data) return <Skeleton />;
 
   const r = hash === '#/open' || hash === '#/signin' ? '/' : hash.replace(/^#/, '') || '/';
+  if (r === '/chat' && s.me && !s.me.left_on && s.data.gid === s.gid) return <GroupChat key={s.gid} />;
   if (r === '/add') return <PurchaseForm key={`add-${s.gid}-${s.me?.id}`} />;
   if (r.startsWith('/edit/')) return <PurchaseForm key={r} editId={r.split('/')[2]} />;
 

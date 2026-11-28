@@ -4,9 +4,32 @@ const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const configured = Boolean(url && key);
-export const supabase = configured
-  ? createClient(url, key, { auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
-  : null;
+function createAuthClient() {
+  const project = new URL(url).hostname.split('.')[0];
+  const legacyKey = `sb-${project}-auth-token`;
+  // Keep the original localStorage key available for explicit member recovery.
+  const storageKey = `${legacyKey}-device`;
+  const migrationKey = `${storageKey}-initialized`;
+  try {
+    const storage = window.localStorage;
+    if (!storage.getItem(migrationKey)) {
+      const activeSession = window.sessionStorage.getItem(legacyKey);
+      if (activeSession && !storage.getItem(storageKey)) {
+        storage.setItem(storageKey, activeSession);
+      }
+      storage.setItem(migrationKey, '1');
+    }
+    window.sessionStorage.removeItem(legacyKey);
+  } catch {
+    // Supabase can still initialize when browser storage is restricted.
+  }
+
+  return createClient(url, key, {
+    auth: { storageKey, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  });
+}
+
+export const supabase = configured ? createAuthClient() : null;
 
 const MAP = [
   [/Invalid login credentials/i, 'ইমেইল বা পাসওয়ার্ড ঠিক নয়।'],

@@ -18,6 +18,7 @@ export function Icon({ name }) {
     home: <><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></>,
     basket: <><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7L4 9z" /><path d="M8 9l3-5M16 9l-3-5" /></>,
     report: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 8h6M9 12h6M9 16h3" /></>,
+    chat: <path d="M4 4h16v12H10l-6 5V4z" />,
     bell: <><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15L6 17z" /><path d="M10 21h4" /></>,
     users: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14a6 6 0 0 1 3.5 6" /></>,
     gear: <><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1" /></>,
@@ -70,7 +71,7 @@ export function Header({ title }) {
             {s.memberships.map(m => <option key={m.group_id} value={m.group_id}>{m.groups.name}</option>)}
           </select>
         </div>}
-        {s.me && !s.me.left_on && <a className="kh-chat-link" href="#/chat">{t("চ্যাট")}</a>}
+
       </div>
       <div className="monthbar">
         <button type="button" className="nb" aria-label={t("আগের মাস")} disabled={s.month <= oldest} onClick={() => s.setMonth(addMonths(s.month, -1))}>‹</button>

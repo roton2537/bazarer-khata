@@ -5,6 +5,7 @@ let current = 'bn';
 export function setCurrentLanguage(language){current=language==='en'?'en':'bn';}
 export function language(){return current;}
 const english = {
+'চ্যাট':'Chat',
 "অনুমোদন পাওয়া যায়নি। কোডের মেয়াদ শেষ হলে আবার কোড নিন।":"No approval yet. If the code expired, request a code again.",
 "পুরোনো সদস্যের খাতা ফেরত নিন":"Recover an existing ledger",
 "নিজের নতুন ফোনে কোড নিন। গ্রুপের অ্যাডমিনকে সরাসরি কোড দেখিয়ে নিজের নামটি নিশ্চিত করুন।":"Get a code on your new phone. Show it to your group admin in person and confirm your member name.",

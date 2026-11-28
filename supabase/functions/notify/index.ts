@@ -1,15 +1,22 @@
-// পুশ নোটিফিকেশন পাঠায়। Supabase Dashboard → Database → Webhooks এ `events` টেবিলের INSERT-এ এই ফাংশন যুক্ত করুন।
-// প্রয়োজনীয় secrets: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (mailto:...), WEBHOOK_SECRET
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 
 const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT')!, Deno.env.get('VAPID_PUBLIC_KEY')!, Deno.env.get('VAPID_PRIVATE_KEY')!);
+const candidate = webpush.generateVAPIDKeys();
 
 Deno.serve(async (req) => {
-  if (req.headers.get('x-webhook-secret') !== Deno.env.get('WEBHOOK_SECRET')) return new Response('forbidden', { status: 403 });
-  const { record } = await req.json();
-  if (!record?.group_id) return new Response('ignored');
+  const webhook = req.headers.get('x-webhook-secret');
+  if (req.method !== 'POST' || !webhook) return new Response('forbidden', { status: 403 });
+  const { data: keys, error } = await sb.rpc('push_sender_keys', { webhook, candidate });
+  if (error) return new Response('configuration unavailable', { status: 503 });
+  if (!keys) return new Response('forbidden', { status: 403 });
+  if (!keys.privateKey || !keys.publicKey) return new Response('invalid configuration', { status: 503 });
+  webpush.setVapidDetails('https://bazarer-khata.vercel.app', keys.publicKey, keys.privateKey);
+  const { event_id } = await req.json();
+  if (!event_id) return new Response('ready');
+  const { data: record, error: lookupError } = await sb.from('events').select('id,group_id,actor_id,kind,message').eq('id', event_id).maybeSingle();
+  if (lookupError) return new Response('event lookup failed', { status: 503 });
+  if (!record) return new Response('ignored');
 
   const { data: grp } = await sb.from('groups').select('name').eq('id', record.group_id).single();
   const { data: members } = await sb.from('members').select('id, user_id').eq('group_id', record.group_id).is('left_on', null).not('user_id', 'is', null);
@@ -25,6 +32,10 @@ Deno.serve(async (req) => {
 
   const payload = JSON.stringify({ title: grp?.name ?? 'বাজারের খাতা', body: record.message, url: '/#/feed', tag: record.id });
   await Promise.all((subs ?? []).map(async (s) => {
+    let endpoint;
+    try { endpoint = new URL(s.endpoint); } catch { return; }
+    if (endpoint.protocol !== 'https:' || endpoint.port || endpoint.username || endpoint.password) return;
+    if (!/^(?:fcm\.googleapis\.com|(?:[a-z0-9-]+\.)*push\.apple\.com|(?:[a-z0-9-]+\.)*push\.services\.mozilla\.com|(?:[a-z0-9-]+\.)*notify\.windows\.com)$/.test(endpoint.hostname)) return;
     try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload); }
     catch (e) { if (e.statusCode === 404 || e.statusCode === 410) await sb.from('push_subscriptions').delete().eq('id', s.id); }
   }));

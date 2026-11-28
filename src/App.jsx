@@ -115,16 +115,18 @@ function Authed({ hash, invite }) {
   if (!s.group || !s.data) return <Skeleton />;
 
   const r = hash === '#/open' || hash === '#/signin' ? '/' : hash.replace(/^#/, '') || '/';
-  if (r === '/chat' && s.me && !s.me.left_on && s.data.gid === s.gid) return <GroupChat key={s.gid} />;
+  const canChat = s.me && !s.me.left_on && s.data.gid === s.gid;
+  const inChat = r === '/chat' && canChat;
   if (r === '/add') return <PurchaseForm key={`add-${s.gid}-${s.me?.id}`} />;
   if (r.startsWith('/edit/')) return <PurchaseForm key={r} editId={r.split('/')[2]} />;
 
   const pendingForMe = (s.data.report.payments || []).filter((p) => p.status === 'pending' && p.to === s.me?.id).length;
   const tabs = [
-    ['/', 'home', t("হোম")], ['/list', 'basket', t("বাজার")], ['/report', 'report', t("রিপোর্ট"), pendingForMe], ['/members', 'users', t("সদস্য")], ['/settings', 'gear', t("সেটিংস")],
+    ['/', 'home', t("হোম")], ['/list', 'basket', t("বাজার")], ['/report', 'report', t("রিপোর্ট"), pendingForMe], ['/members', 'users', t("সদস্য")], ...(canChat ? [['/chat', 'chat', t('চ্যাট')]] : []), ['/settings', 'gear', t("সেটিংস")],
   ];
   let body;
-  if (r === '/list') body = <PurchaseList />;
+  if (inChat) body = <GroupChat key={s.gid} />;
+  else if (r === '/list') body = <PurchaseList />;
   else if (r === '/report') body = <Report />;
   else if (r === '/feed') body = <Feed />;
   else if (r === '/members') body = <Members view="members" />;
@@ -132,13 +134,13 @@ function Authed({ hash, invite }) {
   else body = <Home />;
   return (
     <>
-      <div className="app">
-        <a className={`bell${r === '/feed' ? ' on' : ''}`} href="#/feed" aria-label={s.unread ? `খবর, ${s.unread}টি নতুন` : t("খবর")}>
+      <div className={inChat ? "app chat-tab-page" : "app"}>
+        {!inChat && <a className={`bell${r === '/feed' ? ' on' : ''}`} href="#/feed" aria-label={s.unread ? `খবর, ${s.unread}টি নতুন` : t("খবর")}>
           <Icon name="bell" />{s.unread ? <span className="badge">{s.unread > 9 ? t("৯+") : toBnDigits(s.unread)}</span> : null}
-        </a>
+        </a>}
         {body}
       </div>
-      {s.isActive && s.month === monthOf(todayDhaka()) && s.data.report.status !== 'finalized' && !s.data.closures.some(d=>d.ledger_date===todayDhaka()) &&
+      {!inChat && s.isActive && s.month === monthOf(todayDhaka()) && s.data.report.status !== 'finalized' && !s.data.closures.some(d=>d.ledger_date===todayDhaka()) &&
         <a href="#/add" className="mobile-quick-add noprint" aria-label={t('বাজার যোগ করুন')}><Icon name="plus" /></a>}
       <nav className="nav" aria-label={t("প্রধান মেনু")}><div className="nav-in">
         {tabs.map(([p, ic, label, badge]) => (

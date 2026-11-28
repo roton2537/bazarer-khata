@@ -65,7 +65,7 @@ function useInviteName(code) {
 }
 
 export function AuthScreen({ invite, create, returning, initialMode }) {
-  const [mode, setMode] = useState(initialMode || 'in');
+  const [mode, setMode] = useState(initialMode || (create ? 'up' : 'in'));
   const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [pw, setPw] = useState('');
   const memberLogin = returning && mode === 'in' && !!email.trim() && !email.includes('@');
   const [info, setInfo] = useState('');
@@ -139,7 +139,7 @@ export function Onboarding({user}) {
     run(async () => {
       const c = CURRENCIES.find((x) => x.code === cur);
       const id = await rpc('create_group', { p_name: name, p_currency_code: c.code, p_symbol: c.symbol, p_cname: c.name, p_cgen: c.gen, p_decimals: c.decimals, p_my_name: myName });
-      openLedger(id, '/members');
+      openLedger(id);
     });
   };
   return <main className="kh-welcome kh-new">

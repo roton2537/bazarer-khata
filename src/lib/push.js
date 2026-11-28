@@ -9,19 +9,29 @@ export async function enablePush() {
   if (!key) throw new Error('পুশ নোটিফিকেশন এখনও সার্ভারে চালু করা হয়নি। অ্যাপের ভেতরে খবর দেখা যাবে।');
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') throw new Error('ফোনে এই অ্যাপের নোটিফিকেশনের অনুমতি বন্ধ। ফোনের সেটিংসে অনুমতি দিলে চালু হবে। অ্যাপের ভেতরে খবর দেখা যাবে।');
-  const reg = await navigator.serviceWorker.register('/sw.js');
-  await navigator.serviceWorker.ready;
+  await navigator.serviceWorker.register('/sw.js');
+  const reg = await navigator.serviceWorker.ready;
   const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) }));
   const j = sub.toJSON();
   await rpc('save_push_subscription', { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
 }
 
+async function currentSubscription() {
+  if (!pushSupported()) return null;
+  const reg = await navigator.serviceWorker.getRegistration();
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+
+export async function devicePushEnabled() {
+  if (!pushSupported() || Notification.permission !== 'granted') return false;
+  const sub = await currentSubscription();
+  return sub ? rpc('device_push_enabled', { p_endpoint: sub.endpoint }) : false;
+}
+
 export async function disablePush() {
-  try {
-    if (pushSupported()) {
-      const reg = await navigator.serviceWorker.getRegistration('/sw.js');
-      const sub = reg && (await reg.pushManager.getSubscription());
-      if (sub) { await rpc('remove_push_subscription', { p_endpoint: sub.endpoint }); await sub.unsubscribe(); }
-    }
-  } finally { await rpc('set_push', { p_enabled: false }); }
+  const sub = await currentSubscription();
+  if (sub) {
+    await rpc('remove_push_subscription', { p_endpoint: sub.endpoint });
+    await sub.unsubscribe();
+  }
 }

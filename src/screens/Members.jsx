@@ -5,7 +5,7 @@ import { rpc, supabase } from '../lib/supabase.js';
 import { useStore } from '../store.jsx';
 import { Btn, Field, Sheet, Tag, useAction, useConfirm, useToast } from '../ui.jsx';
 import { dateLabel, dayLabel, todayDhaka, monthOf, toBnDigits } from '../lib/format.js';
-import { enablePush, disablePush, pushSupported } from '../lib/push.js';
+import { enablePush, disablePush, devicePushEnabled, pushSupported } from '../lib/push.js';
 import { go } from '../App.jsx';
 import { Avatar, Header, LanguagePicker } from './parts.jsx';
 
@@ -19,11 +19,21 @@ export default function Members({ view = 'members' }) {
   const pausedNow = (m) => s.data.pauses.some((p) => p.member_id === m.id && p.start_date <= today && (!p.end_date || today < p.end_date));
   const myPauses = s.data.pauses.filter((p) => p.member_id === s.me?.id && (!p.end_date || p.end_date > today));
   const others = s.data.members.filter((m) => !m.left_on && m.id !== s.me?.id && m.user_id);
-  const pushOn = !!s.profile?.push_enabled;
+  const [pushOn, setPushOn] = useState(null);
+  useEffect(() => {
+    if (view !== 'settings') return;
+    let active = true;
+    const check = () => devicePushEnabled().then(value => {
+      if (active) setPushOn(value);
+    }).catch(() => { if (active) setPushOn(false); });
+    check();
+    window.addEventListener('focus', check);
+    return () => { active = false; window.removeEventListener('focus', check); };
+  }, [view,s.uid]);
 
   const togglePush = () => run(async () => {
     if (pushOn) await disablePush(); else await enablePush();
-    await s.refresh();
+    setPushOn(!pushOn);
   }, pushOn ? t("নোটিফিকেশন বন্ধ করা হয়েছে।") : t("নোটিফিকেশন চালু হয়েছে।"));
 
   const endPause = (p) => run(async () => { await rpc('end_pause', { p_pause: p.id, p_return: null }); await s.reloadGroup(); }, t("আজ থেকে আবার খাওয়ায় ফিরছেন।"));
@@ -93,7 +103,7 @@ export default function Members({ view = 'members' }) {
       <div className="card">
         <h2>{t("নোটিফিকেশন")}</h2>
         <p className="small muted">{t("কেউ বাজার যোগ করলে বা পরিশোধ লিখলে ফোনে জানানো হবে। বন্ধ থাকলেও অ্যাপের ভেতরে “খবর” ঠিকই দেখা যাবে।")}</p>
-        <div className="btn-row"><Btn busy={busy} className={pushOn ? 'secondary' : ''} onClick={togglePush} disabled={!pushSupported() && !pushOn}>{pushOn ? t("পুশ নোটিফিকেশন বন্ধ করুন") : t("পুশ নোটিফিকেশন চালু করুন")}</Btn></div>
+        <div className="btn-row"><Btn busy={busy} className={pushOn ? 'secondary' : ''} onClick={togglePush} disabled={pushOn === null || !pushSupported()}>{pushOn ? t("পুশ নোটিফিকেশন বন্ধ করুন") : t("পুশ নোটিফিকেশন চালু করুন")}</Btn></div>
         {pushOn ? <div className="btn-row"><Btn busy={busy} className="secondary small" onClick={() => run(async () => { await rpc('send_test_push', { p_group: s.gid }); }, 'পাঠানো হয়েছে। কয়েক সেকেন্ডে ফোনে আসার কথা। না এলে অ্যাডমিন সার্ভারের পুশ-সেটআপ দেখে নেবেন।')}>{t("পরীক্ষামূলক নোটিফিকেশন পাঠান")}</Btn></div> : null}
         {!pushSupported() ? <p className="small muted">{t("এই ব্রাউজারে পুশ নোটিফিকেশন চলবে না।")}</p> : null}
       </div>

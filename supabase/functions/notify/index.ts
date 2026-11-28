@@ -21,13 +21,15 @@ Deno.serve(async (req) => {
   if (!record) return new Response('ignored');
 
   const { data: grp } = await sb.from('groups').select('name').eq('id', record.group_id).single();
-  const { data: members } = await sb.from('members').select('id, user_id').eq('group_id', record.group_id).is('left_on', null).not('user_id', 'is', null);
+  const { data: members, error: memberError } = await sb.from('members').select('id, user_id').eq('group_id', record.group_id).is('left_on', null).not('user_id', 'is', null);
+  if (memberError) return new Response('member lookup failed', {status:503});
   // push_test: শুধু প্রেরককেই পাঠানো হয় (সেটিংস → "পরীক্ষামূলক নোটিফিকেশন")
   const isTest = record.kind === 'push_test';
   const targets = (members ?? []).filter((m) => (isTest ? m.id === record.actor_id : m.id !== record.actor_id)).map((m) => m.user_id);
   if (!targets.length) return new Response('no targets');
 
-  const { data: profs } = await sb.from('profiles').select('id').in('id', targets).eq('push_enabled', true);
+  const { data: profs, error: profileError } = await sb.from('profiles').select('id').in('id', targets).eq('push_enabled', true);
+  if (profileError) return new Response('profile lookup failed', {status:503});
   let ids = (profs ?? []).map((p) => p.id);
   if (chat && ids.length) {
     const {data: muted, error} = await sb.from('group_chat_mutes').select('user_id').eq('group_id',record.group_id).in('user_id',ids);
@@ -36,16 +38,25 @@ Deno.serve(async (req) => {
     ids = ids.filter(id => !excluded.has(id));
   }
   if (!ids.length) return new Response('no subscribers');
-  const { data: subs } = await sb.from('push_subscriptions').select('*').in('user_id', ids);
+  const { data: subs, error: subscriptionError } = await sb.from('push_subscriptions').select('*').in('user_id', ids);
 
+  if (subscriptionError) return new Response('device lookup failed', {status:503});
+  if (!subs?.length) return new Response('no registered devices');
   const payload = JSON.stringify({ title: grp?.name ?? 'বাজারের খাতা', body: chat ? 'গ্রুপ চ্যাট · New message' : record.message, url: chat ? '/?ledger=' + record.group_id + '#/chat' : '/#/feed', tag: record.id });
-  await Promise.all((subs ?? []).map(async (s) => {
+  const results = await Promise.all(subs.map(async (s) => {
     let endpoint;
     try { endpoint = new URL(s.endpoint); } catch { return; }
     if (endpoint.protocol !== 'https:' || endpoint.port || endpoint.username || endpoint.password) return;
     if (!/^(?:fcm\.googleapis\.com|(?:[a-z0-9-]+\.)*push\.apple\.com|(?:[a-z0-9-]+\.)*push\.services\.mozilla\.com|(?:[a-z0-9-]+\.)*notify\.windows\.com)$/.test(endpoint.hostname)) return;
-    try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload); }
-    catch (e) { if (e.statusCode === 404 || e.statusCode === 410) await sb.from('push_subscriptions').delete().eq('id', s.id); }
+    try {
+      const request = webpush.generateRequestDetails({endpoint:s.endpoint,keys:{p256dh:s.p256dh,auth:s.auth}},payload);
+      const response = await fetch(endpoint, {method:'POST', headers:request.headers, body:request.body, redirect:'error'});
+      if (response.status === 404 || response.status === 410) {
+        await sb.from('push_subscriptions').delete().eq('id',s.id).eq('endpoint',s.endpoint).eq('auth',s.auth);
+      }
+      return response.status;
+    } catch { return 503; }
   }));
-  return new Response('ok');
+  const accepted = results.filter(code => code >= 200 && code < 300).length;
+  return Response.json({accepted, attempted:results.length, statuses:results}, {status:accepted ? 200 : 502});
 });

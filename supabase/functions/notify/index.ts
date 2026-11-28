@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   if (error) return new Response('configuration unavailable', { status: 503 });
   if (!keys) return new Response('forbidden', { status: 403 });
   if (!keys.privateKey || !keys.publicKey) return new Response('invalid configuration', { status: 503 });
-  webpush.setVapidDetails('https://bazarer-khata.vercel.app', keys.publicKey, keys.privateKey);
+  webpush.setVapidDetails('https://bazarer-khata-ten.vercel.app', keys.publicKey, keys.privateKey);
   const { event_id } = await req.json();
   if (!event_id) return new Response('ready');
   const { data: record, error: lookupError } = await sb.from('events').select('id,group_id,actor_id,kind,message').eq('id', event_id).maybeSingle();

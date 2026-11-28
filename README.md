@@ -18,9 +18,9 @@ React + Vite (ফ্রন্টএন্ড) · Supabase (Auth, Postgres, RLS, 
 3. Deploy। আমন্ত্রণ-লিংক হবে `https://<আপনার-ডোমেইন>/#/access/<টোকেন>`।
 
 ### ৩. পুশ নোটিফিকেশন (ঐচ্ছিক)
-1. `npx web-push generate-vapid-keys` দিয়ে কী বানান। Public key টি `VITE_VAPID_PUBLIC_KEY`-তে দিন।
-2. `supabase functions deploy notify` এবং secrets সেট করুন: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `WEBHOOK_SECRET`।
-3. Dashboard → Database → Webhooks: টেবিল `events`, ইভেন্ট `INSERT`, টার্গেট `notify` ফাংশন, হেডার `x-webhook-secret`।
+1. `wire_messmate_web_push` মাইগ্রেশনটি গ্রুপের নতুন ইভেন্টের জন্য ওয়েবহুক তৈরি করে। অন্য Supabase প্রজেক্টে চালানোর আগে ট্রিগারের URL বদলান।
+2. `supabase functions deploy notify --no-verify-jwt` চালান। ফাংশনটি Vault-এ রাখা ওয়েবহুক সিক্রেট যাচাই করে। প্রথম বৈধ অনুরোধে VAPID কী তৈরি হয়।
+3. Vault-এর `messmate_push_vapid` থেকে শুধু `publicKey` নিয়ে Vercel-এর `VITE_VAPID_PUBLIC_KEY` সেট করে আবার ডিপ্লয় করুন।
 4. আইফোনে আগে অ্যাপটি “Add to Home Screen” করতে হয়।
 
 পুশ চালু না থাকলেও অ্যাপের ভেতরের “খবর” সবসময় কাজ করে।

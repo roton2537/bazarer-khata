@@ -70,6 +70,7 @@ export function Header({ title }) {
             {s.memberships.map(m => <option key={m.group_id} value={m.group_id}>{m.groups.name}</option>)}
           </select>
         </div>}
+        {s.me && !s.me.left_on && <a className="kh-chat-link" href="#/chat">{t("চ্যাট")}</a>}
       </div>
       <div className="monthbar">
         <button type="button" className="nb" aria-label={t("আগের মাস")} disabled={s.month <= oldest} onClick={() => s.setMonth(addMonths(s.month, -1))}>‹</button>
